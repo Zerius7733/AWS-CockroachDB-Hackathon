@@ -38,7 +38,7 @@ Useful demo prompts:
 List the tables that store Northstar candidate memory.
 Show the schema of candidate_memories.
 Count memories by category for demo-user.
-Explain the vector search query used to retrieve memories for a job match.
+Explain how candidate memories are stored and retrieved for memory-backed job discovery.
 ```
 
 ## Configuration

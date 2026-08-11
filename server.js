@@ -12,8 +12,9 @@ import {
   saveProfile,
   updateApplication,
 } from './lib/database.js'
-import { createEmbedding, extractResume, matchJob } from './agent/openai.js'
-import { deleteMemory, listMemories, saveResumeMemories, searchMemories, storageMode } from './agent/memory-store.js'
+import { createEmbedding, extractResume, searchJobs } from './agent/openai.js'
+import { deleteMemory, getCareerContext, listMemories, saveResumeMemories, storageMode } from './agent/memory-store.js'
+import { getCachedJobSearch, jobSearchCacheKey, jobSearchFreshnessMinutes, saveJobSearchCache } from './agent/job-search-cache.js'
 import { authenticationMode, login, logout, register, requireAuth } from './lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -102,6 +103,7 @@ app.get('/api/agent/status', (_req, res) => {
     cockroachConfigured: Boolean(process.env.DATABASE_URL),
     mcpMode: 'external-client',
     authentication: authenticationMode(),
+    jobSearchCacheMinutes: jobSearchFreshnessMinutes(),
   })
 })
 
@@ -133,16 +135,34 @@ app.delete('/api/memory/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }) }
 })
 
-app.post('/api/agent/match', async (req, res) => {
+app.post('/api/agent/jobs', async (req, res) => {
   try {
-    const jobDescription = String(req.body?.jobDescription || '').trim()
-    if (jobDescription.length < 80) return res.status(400).json({ error: 'Paste a fuller job description (at least 80 characters)' })
-    if (jobDescription.length > 30_000) return res.status(413).json({ error: 'Job description is too long' })
-    const [embedding] = await createEmbedding(jobDescription)
-    const memories = await searchMemories(req.user.id, embedding)
-    if (!memories.length) return res.status(409).json({ error: 'Upload a resume before matching a job' })
-    const match = await matchJob({ jobDescription, memories })
-    res.json({ ...match, retrievedMemories: memories, storage: storageMode() })
+    const location = String(req.body?.location || '').trim().slice(0, 120)
+    const workMode = String(req.body?.workMode || 'any').trim().toLowerCase()
+    if (!['any', 'remote', 'hybrid', 'on-site'].includes(workMode)) return res.status(400).json({ error: 'Choose a valid work mode' })
+    const { profile, memories } = await getCareerContext(req.user.id)
+    if (!memories.length) return res.status(409).json({ error: 'Upload a resume before searching for jobs' })
+    const freshnessMinutes = jobSearchFreshnessMinutes()
+    const searchKey = jobSearchCacheKey({ profile, memories, location, workMode })
+    const cached = await getCachedJobSearch(req.user.id, searchKey, freshnessMinutes)
+    if (cached) {
+      res.set('X-Northstar-Cache', 'HIT')
+      return res.json({
+        ...cached.result,
+        searchedAt: cached.createdAt,
+        storage: storageMode(),
+        cache: { hit: true, freshnessMinutes, freshUntil: cached.freshUntil },
+      })
+    }
+    const result = await searchJobs({ profile, memories, location, workMode })
+    const saved = await saveJobSearchCache(req.user.id, searchKey, result)
+    res.set('X-Northstar-Cache', 'MISS')
+    res.json({
+      ...result,
+      searchedAt: saved.createdAt,
+      storage: storageMode(),
+      cache: { hit: false, freshnessMinutes, freshUntil: saved.freshUntil },
+    })
   } catch (error) { res.status(500).json({ error: error.message }) }
 })
 

@@ -22,3 +22,12 @@ CREATE TABLE IF NOT EXISTS candidate_memories (
   INDEX candidate_memories_user_idx (user_id),
   VECTOR INDEX candidate_memories_embedding_idx (user_id, embedding vector_cosine_ops)
 );
+
+CREATE TABLE IF NOT EXISTS candidate_job_search_cache (
+  user_id STRING NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  search_key STRING NOT NULL,
+  result JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, search_key),
+  INDEX candidate_job_search_cache_created_idx (user_id, created_at DESC)
+);

@@ -42,35 +42,46 @@ const resumeSchema = {
   required: ['summary', 'targetRoles', 'yearsExperience', 'memories'],
 }
 
-const matchSchema = {
+const jobSearchSchema = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    score: { type: 'integer', minimum: 0, maximum: 100 },
-    verdict: { type: 'string', enum: ['strong_match', 'possible_match', 'stretch', 'not_recommended'] },
-    summary: { type: 'string' },
-    strengths: { type: 'array', items: { type: 'string' } },
-    gaps: { type: 'array', items: { type: 'string' } },
-    evidence: {
+    searchSummary: { type: 'string' },
+    jobs: {
       type: 'array',
       items: {
         type: 'object',
         additionalProperties: false,
-        properties: { requirement: { type: 'string' }, memory: { type: 'string' } },
-        required: ['requirement', 'memory'],
+        properties: {
+          title: { type: 'string' },
+          company: { type: 'string' },
+          location: { type: 'string' },
+          workMode: { type: 'string', enum: ['remote', 'hybrid', 'on-site', 'unspecified'] },
+          employmentType: { type: 'string' },
+          url: { type: 'string' },
+          source: { type: 'string' },
+          postedAt: { type: 'string' },
+          score: { type: 'integer', minimum: 0, maximum: 100 },
+          matchLevel: { type: 'string', enum: ['excellent', 'strong', 'possible', 'stretch'] },
+          reason: { type: 'string' },
+          matchedSkills: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['title', 'company', 'location', 'workMode', 'employmentType', 'url', 'source', 'postedAt', 'score', 'matchLevel', 'reason', 'matchedSkills'],
       },
     },
-    tailoredPitch: { type: 'string' },
-    nextSteps: { type: 'array', items: { type: 'string' } },
   },
-  required: ['score', 'verdict', 'summary', 'strengths', 'gaps', 'evidence', 'tailoredPitch', 'nextSteps'],
+  required: ['searchSummary', 'jobs'],
 }
 
-const structuredResponse = async ({ input, schema, name }) => {
+const structuredResponse = async ({ input, schema, name, tools, toolChoice, include, reasoning }) => {
   const response = await requestOpenAI('/responses', {
     model: process.env.OPENAI_MODEL || 'gpt-5.6-terra',
     store: false,
     input,
+    ...(tools ? { tools } : {}),
+    ...(toolChoice ? { tool_choice: toolChoice } : {}),
+    ...(include ? { include } : {}),
+    ...(reasoning ? { reasoning } : {}),
     text: { format: { type: 'json_schema', name, strict: true, schema } },
   })
   const text = outputText(response)
@@ -101,18 +112,52 @@ export const createEmbedding = async (input) => {
   return response.data.map((item) => item.embedding)
 }
 
-export const matchJob = async ({ jobDescription, memories }) => structuredResponse({
-  name: 'northstar_job_match',
-  schema: matchSchema,
-  input: [
-    {
-      role: 'developer',
-      content: 'You are a careful job-application agent. Evaluate fit using only supplied candidate memories. Explain evidence and gaps honestly. Never claim a skill that is not present. The user must approve every external application action.',
-    },
-    {
-      role: 'user',
-      content: `JOB DESCRIPTION\n${jobDescription}\n\nRETRIEVED CANDIDATE MEMORY\n${memories.map((item) => `- [${item.category}] ${item.content}`).join('\n')}`,
-    },
-  ],
-})
+const isPublicHttpUrl = (value) => {
+  try { return ['http:', 'https:'].includes(new URL(value).protocol) }
+  catch { return false }
+}
 
+export const searchJobs = async ({ profile, memories, location, workMode }) => {
+  const result = await structuredResponse({
+    name: 'northstar_job_search',
+    schema: jobSearchSchema,
+    tools: [{ type: 'web_search' }],
+    toolChoice: 'required',
+    include: ['web_search_call.action.sources'],
+    reasoning: { effort: 'low' },
+    input: [
+      {
+        role: 'developer',
+        content: 'You are a careful job-discovery agent. Search the live public web for currently available jobs, then rank them using only the supplied candidate profile and memories. Prefer direct employer career pages, followed by reputable job boards such as LinkedIn. Include only specific job-detail URLs found during this search, never search-result pages or invented URLs. Do not imply that Northstar applied. Keep match reasons grounded in candidate memory and make uncertainty explicit.',
+      },
+      {
+        role: 'user',
+        content: `Find up to 8 suitable, currently open jobs.
+
+SEARCH PREFERENCES
+Location: ${location || 'Any location'}
+Work mode: ${workMode || 'any'}
+
+CANDIDATE PROFILE
+Summary: ${profile?.summary || 'Not provided'}
+Target roles: ${profile?.targetRoles?.join(', ') || 'Infer cautiously from memory'}
+Years of experience: ${profile?.yearsExperience ?? 'Not provided'}
+
+COCKROACHDB CANDIDATE MEMORIES
+${memories.map((item) => `- [${item.category}] ${item.title}: ${item.content}`).join('\n')}
+
+Search broadly across employer career sites and public job boards. Prefer recent listings. Return fewer results rather than including a listing without a direct, verifiable URL. Rank the final list from best to weakest fit.`,
+      },
+    ],
+  })
+
+  const seen = new Set()
+  return {
+    searchSummary: result.searchSummary,
+    jobs: result.jobs.filter((job) => {
+      if (!isPublicHttpUrl(job.url) || seen.has(job.url)) return false
+      seen.add(job.url)
+      return true
+    }).slice(0, 8),
+  }
+}

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getDatabasePool, withDatabaseTransaction } from '../lib/database.js'
+import { invalidateJobSearchCache } from './job-search-cache.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const localPath = path.join(__dirname, '..', 'data', 'memory.json')
@@ -54,6 +55,27 @@ export const listMemories = async (userId) => {
   return result.rows
 }
 
+export const getCareerContext = async (userId) => {
+  const database = await getPool()
+  if (!database) {
+    const user = localUserData(await readLocal(), userId)
+    return {
+      profile: user.profile,
+      memories: user.memories.map(({ embedding: _embedding, ...item }) => item),
+    }
+  }
+  const [profileResult, memories] = await Promise.all([
+    database.query(
+      `SELECT summary, target_roles AS "targetRoles", years_experience::FLOAT8 AS "yearsExperience",
+              source_name AS "sourceName", updated_at AS "updatedAt"
+       FROM candidate_profiles WHERE user_id = $1`,
+      [userId],
+    ),
+    listMemories(userId),
+  ])
+  return { profile: profileResult.rows[0] || null, memories }
+}
+
 export const saveResumeMemories = async (userId, { profile, memories, embeddings, sourceName }) => {
   const now = new Date().toISOString()
   const records = memories.map((item, index) => ({
@@ -63,6 +85,7 @@ export const saveResumeMemories = async (userId, { profile, memories, embeddings
   if (!database) {
     const current = await readLocal()
     await writeLocal({ users: { ...current.users, [userId]: { profile, memories: records } } })
+    await invalidateJobSearchCache(userId)
     return records.map(({ embedding: _embedding, ...item }) => item)
   }
 
@@ -73,6 +96,7 @@ export const saveResumeMemories = async (userId, { profile, memories, embeddings
       [userId, profile.summary, profile.targetRoles, profile.yearsExperience, sourceName],
     )
     await client.query('DELETE FROM candidate_memories WHERE user_id = $1', [userId])
+    await invalidateJobSearchCache(userId, client)
     for (const item of records) {
       await client.query(
         `INSERT INTO candidate_memories
@@ -108,8 +132,12 @@ export const deleteMemory = async (userId, id) => {
     const next = user.memories.filter((item) => item.id !== id)
     if (next.length === user.memories.length) return false
     await writeLocal({ users: { ...current.users, [userId]: { ...user, memories: next } } })
+    await invalidateJobSearchCache(userId)
     return true
   }
-  const result = await database.query('DELETE FROM candidate_memories WHERE id = $1 AND user_id = $2', [id, userId])
-  return result.rowCount > 0
+  return withDatabaseTransaction(async (client) => {
+    const result = await client.query('DELETE FROM candidate_memories WHERE id = $1 AND user_id = $2', [id, userId])
+    if (result.rowCount) await invalidateJobSearchCache(userId, client)
+    return result.rowCount > 0
+  })
 }
