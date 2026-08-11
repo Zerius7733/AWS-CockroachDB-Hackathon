@@ -10,7 +10,7 @@ export const jobSearchFreshnessMinutes = () => {
   return Math.min(1_440, Math.max(5, Math.round(configured)))
 }
 
-export const jobSearchCacheKey = ({ profile, memories, location, workMode }) => createHash('sha256')
+export const jobSearchCacheKey = ({ profile, memories, feedback = [], location, workMode }) => createHash('sha256')
   .update(JSON.stringify({
     location: String(location || '').trim().toLowerCase(),
     workMode: String(workMode || 'any').trim().toLowerCase(),
@@ -21,6 +21,9 @@ export const jobSearchCacheKey = ({ profile, memories, location, workMode }) => 
       updatedAt: profile.updatedAt,
     } : null,
     memories: memories.map(({ id, category, title, content, verified, createdAt }) => ({ id, category, title, content, verified, createdAt })),
+    feedback: feedback.map(({ jobUrl, feedbackType, jobTitle, company, location: jobLocation, updatedAt }) => ({
+      jobUrl, feedbackType, jobTitle, company, location: jobLocation, updatedAt,
+    })),
   }))
   .digest('hex')
 

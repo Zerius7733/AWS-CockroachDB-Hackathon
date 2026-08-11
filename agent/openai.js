@@ -117,7 +117,7 @@ const isPublicHttpUrl = (value) => {
   catch { return false }
 }
 
-export const searchJobs = async ({ profile, memories, location, workMode }) => {
+export const searchJobs = async ({ profile, memories, feedback = [], location, workMode }) => {
   const result = await structuredResponse({
     name: 'northstar_job_search',
     schema: jobSearchSchema,
@@ -128,11 +128,11 @@ export const searchJobs = async ({ profile, memories, location, workMode }) => {
     input: [
       {
         role: 'developer',
-        content: 'You are a careful job-discovery agent. Search the live public web for currently available jobs, then rank them using only the supplied candidate profile and memories. Prefer direct employer career pages, followed by reputable job boards such as LinkedIn. Include only specific job-detail URLs found during this search, never search-result pages or invented URLs. Do not imply that Northstar applied. Keep match reasons grounded in candidate memory and make uncertainty explicit.',
+        content: 'You are a careful job-discovery agent. Search the live public web for currently available jobs, then rank them using only the supplied candidate profile, memories, and explicit feedback. Prefer direct employer career pages, followed by reputable job boards such as LinkedIn. Include only specific job-detail URLs found during this search, never search-result pages or invented URLs. Do not imply that Northstar applied. Keep match reasons grounded in candidate memory and make uncertainty explicit. Treat applied and interested feedback as positive signals; exclude hidden companies; use negative feedback cautiously without overgeneralizing from one decision. Briefly mention material feedback adaptations in the search summary.',
       },
       {
         role: 'user',
-        content: `Find up to 8 suitable, currently open jobs.
+        content: `Find up to 10 suitable, currently open jobs.
 
 SEARCH PREFERENCES
 Location: ${location || 'Any location'}
@@ -146,7 +146,12 @@ Years of experience: ${profile?.yearsExperience ?? 'Not provided'}
 COCKROACHDB CANDIDATE MEMORIES
 ${memories.map((item) => `- [${item.category}] ${item.title}: ${item.content}`).join('\n')}
 
-Search broadly across employer career sites and public job boards. Prefer recent listings. Return fewer results rather than including a listing without a direct, verifiable URL. Rank the final list from best to weakest fit.`,
+COCKROACHDB JOB FEEDBACK MEMORY
+${feedback.length
+    ? feedback.map((item) => `- [${item.feedbackType}] ${item.jobTitle} at ${item.company} — ${item.location || 'location unspecified'} (${item.workMode || 'work mode unspecified'})`).join('\n')
+    : '- No job feedback recorded yet.'}
+
+Search broadly across employer career sites and public job boards. Prefer recent listings. Never return a job marked not interested or applied, and never return jobs from a hidden company. Return fewer results rather than including a listing without a direct, verifiable URL. Rank the final list from best to weakest fit.`,
       },
     ],
   })
@@ -158,6 +163,6 @@ Search broadly across employer career sites and public job boards. Prefer recent
       if (!isPublicHttpUrl(job.url) || seen.has(job.url)) return false
       seen.add(job.url)
       return true
-    }).slice(0, 8),
+    }).slice(0, 10),
   }
 }

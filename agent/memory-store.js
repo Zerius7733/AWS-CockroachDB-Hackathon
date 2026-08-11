@@ -11,7 +11,7 @@ let initialization
 
 const vectorLiteral = (embedding) => `[${embedding.join(',')}]`
 
-const getPool = async () => {
+export const getMemoryDatabase = async () => {
   if (!process.env.DATABASE_URL) return null
   const pool = getDatabasePool()
   if (!initialization) {
@@ -25,6 +25,8 @@ const getPool = async () => {
   await initialization
   return pool
 }
+
+const getPool = getMemoryDatabase
 
 const readLocal = async () => {
   try {

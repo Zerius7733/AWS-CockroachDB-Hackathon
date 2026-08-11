@@ -37,6 +37,8 @@ Open **Career agent** to upload a PDF resume, inspect the durable facts extracte
 
 Identical job searches are cached per user in CockroachDB. The cache key includes the search preferences and the current résumé-memory contents, so changing memory automatically invalidates prior results. `JOB_SEARCH_CACHE_MINUTES` controls freshness and defaults to 60 minutes; cache hits make no OpenAI or web-search request.
 
+Each job result also has a **Teach agent** control. Decisions such as interested, not interested, applied, hide company, wrong seniority, wrong industry, and poor location are stored per user in CockroachDB. Saving or clearing feedback does not call OpenAI. It invalidates stale search results, and the next fresh search uses the accumulated decisions when discovering and ranking jobs.
+
 ### Migrate existing CSV data
 
 If `data/applications.csv` or `data/profile.csv` exists, migrate it once after setting `DATABASE_URL`:
@@ -49,7 +51,7 @@ The migration replaces the applications currently in CockroachDB only when a loc
 
 ## CockroachDB memory schema
 
-The agent initializes [`db/memory.sql`](db/memory.sql) on the first memory request. It creates `candidate_profiles`, `candidate_memories`, and `candidate_job_search_cache`, including a user-prefixed cosine vector index. These tables share the application's bounded CockroachDB connection pool while remaining isolated from the application tracker tables in [`db/schema.sql`](db/schema.sql).
+The agent initializes [`db/memory.sql`](db/memory.sql) on the first memory request. It creates `candidate_profiles`, `candidate_memories`, `candidate_job_search_cache`, and `candidate_job_feedback`, including a user-prefixed cosine vector index. These tables share the application's bounded CockroachDB connection pool while remaining isolated from the application tracker tables in [`db/schema.sql`](db/schema.sql).
 
 ## Deploy on AWS ECS
 

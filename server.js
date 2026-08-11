@@ -15,6 +15,7 @@ import {
 import { createEmbedding, extractResume, searchJobs } from './agent/openai.js'
 import { deleteMemory, getCareerContext, listMemories, saveResumeMemories, storageMode } from './agent/memory-store.js'
 import { getCachedJobSearch, jobSearchCacheKey, jobSearchFreshnessMinutes, saveJobSearchCache } from './agent/job-search-cache.js'
+import { deleteJobFeedback, listJobFeedback, saveJobFeedback } from './agent/job-feedback-store.js'
 import { authenticationMode, login, logout, register, requireAuth } from './lib/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -135,15 +136,35 @@ app.delete('/api/memory/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }) }
 })
 
+app.get('/api/agent/jobs/feedback', async (req, res) => {
+  try { res.json(await listJobFeedback(req.user.id)) }
+  catch (error) { res.status(error.status || 500).json({ error: error.message }) }
+})
+
+app.put('/api/agent/jobs/feedback', async (req, res) => {
+  try { res.json(await saveJobFeedback(req.user.id, req.body?.job, req.body?.feedbackType)) }
+  catch (error) { res.status(error.status || 500).json({ error: error.message }) }
+})
+
+app.delete('/api/agent/jobs/feedback', async (req, res) => {
+  try {
+    if (!await deleteJobFeedback(req.user.id, req.query.url)) return res.status(404).json({ error: 'Job feedback not found' })
+    res.status(204).end()
+  } catch (error) { res.status(error.status || 500).json({ error: error.message }) }
+})
+
 app.post('/api/agent/jobs', async (req, res) => {
   try {
     const location = String(req.body?.location || '').trim().slice(0, 120)
     const workMode = String(req.body?.workMode || 'any').trim().toLowerCase()
     if (!['any', 'remote', 'hybrid', 'on-site'].includes(workMode)) return res.status(400).json({ error: 'Choose a valid work mode' })
-    const { profile, memories } = await getCareerContext(req.user.id)
+    const [{ profile, memories }, feedback] = await Promise.all([
+      getCareerContext(req.user.id),
+      listJobFeedback(req.user.id),
+    ])
     if (!memories.length) return res.status(409).json({ error: 'Upload a resume before searching for jobs' })
     const freshnessMinutes = jobSearchFreshnessMinutes()
-    const searchKey = jobSearchCacheKey({ profile, memories, location, workMode })
+    const searchKey = jobSearchCacheKey({ profile, memories, feedback, location, workMode })
     const cached = await getCachedJobSearch(req.user.id, searchKey, freshnessMinutes)
     if (cached) {
       res.set('X-Northstar-Cache', 'HIT')
@@ -154,7 +175,7 @@ app.post('/api/agent/jobs', async (req, res) => {
         cache: { hit: true, freshnessMinutes, freshUntil: cached.freshUntil },
       })
     }
-    const result = await searchJobs({ profile, memories, location, workMode })
+    const result = await searchJobs({ profile, memories, feedback, location, workMode })
     const saved = await saveJobSearchCache(req.user.id, searchKey, result)
     res.set('X-Northstar-Cache', 'MISS')
     res.json({

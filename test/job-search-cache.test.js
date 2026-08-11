@@ -32,6 +32,7 @@ test('job-search cache key changes with memory or search preferences', () => {
   assert.equal(jobSearchCacheKey(base), jobSearchCacheKey({ ...base, location: ' singapore ' }))
   assert.notEqual(jobSearchCacheKey(base), jobSearchCacheKey({ ...base, workMode: 'remote' }))
   assert.notEqual(jobSearchCacheKey(base), jobSearchCacheKey({ ...base, memories: [{ ...base.memories[0], content: 'Built Python tools.' }] }))
+  assert.notEqual(jobSearchCacheKey(base), jobSearchCacheKey({ ...base, feedback: [{ jobUrl: 'https://example.com/job', feedbackType: 'wrong_industry', jobTitle: 'Analyst', company: 'Example' }] }))
 })
 
 test('local job-search cache reuses and invalidates results', async () => {

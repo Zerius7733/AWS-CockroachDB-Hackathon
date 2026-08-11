@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  BrainCircuit, BriefcaseBusiness, CheckCircle2, Database, ExternalLink, FileText,
-  LoaderCircle, MapPin, Search, ShieldCheck, Sparkles, Trash2, UploadCloud,
+  BrainCircuit, BriefcaseBusiness, ExternalLink, LoaderCircle, MapPin, Search, ShieldCheck, Trash2, UploadCloud,
 } from 'lucide-react'
 import './memory-agent.css'
 
@@ -33,15 +32,28 @@ const TABS = [
   { id: 'search', label: 'Job search' },
 ]
 
-function CareerHeader({ memories, status, uploading, onUpload }) {
+const JOB_FEEDBACK_OPTIONS = [
+  ['interested', 'Interested'],
+  ['not_interested', 'Not interested'],
+  ['applied', 'Applied'],
+  ['hide_company', 'Hide company'],
+  ['wrong_seniority', 'Wrong seniority'],
+  ['wrong_industry', 'Wrong industry'],
+  ['poor_location', 'Good match, poor location'],
+]
+
+const jobKey = (value) => {
+  try { const url = new URL(value); url.hash = ''; return url.toString() }
+  catch { return String(value || '') }
+}
+
+function CareerHeader({ memories, uploading, onUpload }) {
   return <header className="career-header">
     <div>
       <h1>Career agent</h1>
       <p>Your experience, remembered and working for you.</p>
     </div>
-    <div className="career-summary" aria-label="Career agent status">
-      <span><FileText /><strong>{memories.length}</strong><small>résumé memories</small></span>
-      <span className={status.cockroachConfigured ? 'connected' : ''}><Database /><i /><strong>CockroachDB</strong><small>{status.cockroachConfigured ? 'connected' : 'setup needed'}</small></span>
+    <div className="career-summary">
       <button className="button outline" onClick={onUpload} disabled={uploading}>
         {uploading ? <><LoaderCircle className="spin" />Building memory…</> : <><UploadCloud />{memories.length ? 'Replace résumé' : 'Upload résumé'}</>}
       </button>
@@ -49,25 +61,60 @@ function CareerHeader({ memories, status, uploading, onUpload }) {
   </header>
 }
 
-function OverviewView({ memories, status, uploading, onUpload, onSearch }) {
+const OVERVIEW_CATEGORIES = ['skill', 'experience', 'achievement', 'education']
+
+function OverviewView({ memories, status, uploading, searching, result, location, workMode, onUpload, onMemory, onFindJobs, onSearch }) {
+  const categoryCounts = memories.reduce((counts, memory) => {
+    counts[memory.category] = (counts[memory.category] || 0) + 1
+    return counts
+  }, {})
+  const priorityMemories = memories.filter((memory) => ['achievement', 'experience', 'skill'].includes(memory.category))
+  const featuredMemories = (priorityMemories.length ? priorityMemories : memories).slice(0, 3)
+
   return <div className="career-overview">
     <section className="overview-intro">
       <div className="overview-icon"><BrainCircuit /></div>
       <div>
-        <h2>{memories.length ? 'Your career memory is ready' : 'Start with your résumé'}</h2>
+        <h2>{memories.length ? 'Your career evidence is ready' : 'Start with your résumé'}</h2>
         <p>{memories.length
-          ? `Northstar has ${memories.length} grounded facts ready to guide a live job search.`
+          ? `${memories.length} verified résumé facts will guide every search and explain why each role fits.`
           : 'Upload a PDF résumé and Northstar will turn your experience into searchable, user-controlled memory.'}</p>
       </div>
-      <button className="button primary" onClick={memories.length ? onSearch : onUpload} disabled={uploading}>
-        {memories.length ? <><Search />Find matching jobs</> : <><UploadCloud />Upload résumé</>}
+      <button className="button primary" onClick={memories.length ? onFindJobs : onUpload} disabled={uploading || searching}>
+        {memories.length
+          ? searching ? <><LoaderCircle className="spin" />Finding jobs…</> : <><Search />Find matching jobs</>
+          : <><UploadCloud />Upload résumé</>}
       </button>
     </section>
-    <div className="overview-flow" aria-label="How Northstar finds jobs">
-      <article><span>1</span><div><strong>Remember</strong><p>Résumé facts are stored privately for your account.</p></div><CheckCircle2 /></article>
-      <article><span>2</span><div><strong>Discover</strong><p>The agent searches current public job listings.</p></div><Sparkles /></article>
-      <article><span>3</span><div><strong>Rank</strong><p>Every result is explained using your actual experience.</p></div><BriefcaseBusiness /></article>
-    </div>
+    {memories.length ? <div className="overview-dashboard">
+      <section className="overview-evidence">
+        <header><div><h3>Evidence the agent will use</h3><p>Your strongest remembered experience and outcomes.</p></div><button onClick={onMemory}>Review all memory</button></header>
+        <div className="overview-evidence-list">
+          {featuredMemories.map((memory) => <article key={memory.id}>
+            <span>{CATEGORY_LABELS[memory.category] || memory.category}</span>
+            <div><strong>{memory.title}</strong><p>{memory.content}</p></div>
+          </article>)}
+        </div>
+      </section>
+      <aside className="overview-sidebar">
+        <section>
+          <h3>Profile coverage</h3>
+          <p>Facts available for matching and ranking.</p>
+          <dl>{OVERVIEW_CATEGORIES.map((category) => <div key={category}><dt>{CATEGORY_LABELS[category]}</dt><dd>{categoryCounts[category] || 0}</dd></div>)}</dl>
+        </section>
+        <section className="overview-search-state">
+          <span>{result ? 'Latest search' : 'Next step'}</span>
+          <strong>{result ? `${result.jobs.length} matching jobs found` : 'Run your first matched search'}</strong>
+          <p>{result
+            ? `${location || 'Any location'} · ${workMode === 'any' ? 'Any work mode' : workMode}`
+            : 'Choose a location and work mode. The agent will rank current openings against this evidence.'}</p>
+          <button className="button outline" onClick={onSearch}><Search />{result ? 'View search results' : 'Set search preferences'}</button>
+        </section>
+      </aside>
+    </div> : <div className="overview-empty-detail">
+      <strong>One upload creates your working profile</strong>
+      <p>Northstar extracts skills, experience, achievements, education, and preferences. You can inspect or delete every fact before using it in a job search.</p>
+    </div>}
     <footer className="overview-trust"><ShieldCheck />{status.storage === 'cockroachdb' ? 'Career memory is backed by CockroachDB and isolated to your account.' : 'Local demo storage is active.'}</footer>
   </div>
 }
@@ -92,18 +139,27 @@ function MemoryView({ grouped, memories, onRemove, onUpload }) {
   </div>
 }
 
-function JobRow({ job }) {
+function JobRow({ job, feedbackType, feedbackSaving, onFeedback }) {
   return <article className="job-row">
     <div className={`job-score score-${job.matchLevel}`}><strong>{job.score}%</strong><small>{job.matchLevel} match</small></div>
     <div className="job-role"><strong>{job.title}</strong><span>{job.company}</span></div>
     <div className="job-details"><span><MapPin />{job.location}</span><span><BriefcaseBusiness />{job.workMode === 'unspecified' ? job.employmentType : `${job.workMode} · ${job.employmentType}`}</span></div>
     <div className="job-reason"><p>{job.reason}</p><div>{job.matchedSkills.slice(0, 3).map((skill) => <span key={skill}>{skill}</span>)}</div></div>
     <div className="job-source"><strong>{job.source}</strong><span>{job.postedAt}</span></div>
-    <a className="button outline" href={job.url} target="_blank" rel="noreferrer">View job<ExternalLink /></a>
+    <div className="job-actions">
+      <a className="button outline" href={job.url} target="_blank" rel="noreferrer">View job<ExternalLink /></a>
+      <label>
+        <span className="sr-only">Feedback for {job.title} at {job.company}</span>
+        <select className={feedbackType ? 'has-feedback' : ''} value={feedbackType || ''} disabled={feedbackSaving} onChange={(event) => onFeedback(job, event.target.value)}>
+          <option value="">{feedbackSaving ? 'Saving…' : feedbackType ? 'Clear feedback' : 'Teach agent'}</option>
+          {JOB_FEEDBACK_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+        </select>
+      </label>
+    </div>
   </article>
 }
 
-function JobSearchView({ memories, location, setLocation, workMode, setWorkMode, searching, result, cacheMinutes, onSearch, onUpload }) {
+function JobSearchView({ memories, location, setLocation, workMode, setWorkMode, searching, result, cacheMinutes, feedbackByJob, savingFeedback, feedbackNotice, onFeedback, onSearch, onUpload }) {
   if (!memories.length) return <div className="career-empty">
     <Search /><h2>Add memory before searching</h2><p>The agent needs résumé evidence before it can find and explain suitable jobs.</p>
     <button className="button primary" onClick={onUpload}><UploadCloud />Upload résumé</button>
@@ -119,12 +175,15 @@ function JobSearchView({ memories, location, setLocation, workMode, setWorkMode,
       {result ? <>
         <div className="results-heading"><div><h2>{result.jobs.length} matching jobs</h2><p>{result.searchSummary}</p></div><div className="result-timing"><time>{new Date(result.searchedAt).toLocaleString()}</time>{result.cache ? <span className={result.cache.hit ? 'cache-hit' : ''}>{result.cache.hit ? 'Cached result' : 'Fresh search'} · refreshes after {new Date(result.cache.freshUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> : null}</div></div>
         {result.jobs.length ? <div className="job-list">
-          <div className="job-list-head"><span>Match</span><span>Role</span><span>Details</span><span>Why this matches</span><span>Source</span><span /></div>
-          {result.jobs.map((job) => <JobRow job={job} key={`${job.company}-${job.title}-${job.url}`} />)}
+          <div className="job-list-head"><span>Match</span><span>Role</span><span>Details</span><span>Why this matches</span><span>Source</span><span>Actions</span></div>
+          {result.jobs.map((job) => {
+            const key = jobKey(job.url)
+            return <JobRow job={job} feedbackType={feedbackByJob[key]?.feedbackType} feedbackSaving={savingFeedback === key} onFeedback={onFeedback} key={`${job.company}-${job.title}-${job.url}`} />
+          })}
         </div> : <div className="career-empty compact"><Search /><h2>No verified jobs found</h2><p>Try a broader location or choose any work mode.</p></div>}
       </> : <div className="search-empty"><Search /><div><h2>Search live openings using your memory</h2><p>Northstar searches public employer sites and job boards, then ranks listings against what you have actually done.</p></div></div>}
     </div>
-    <footer className="search-disclaimer"><ShieldCheck />Results come from the public web. Verify details and apply on the employer’s official site.</footer>
+    <footer className="search-disclaimer"><ShieldCheck />{feedbackNotice || 'Use “Teach agent” to improve future searches. Results come from the public web.'}</footer>
   </div>
 }
 
@@ -138,13 +197,17 @@ export default function MemoryAgent({ onError, onNotify }) {
   const [location, setLocation] = useState('')
   const [workMode, setWorkMode] = useState('any')
   const [result, setResult] = useState(null)
+  const [feedbackByJob, setFeedbackByJob] = useState({})
+  const [savingFeedback, setSavingFeedback] = useState('')
+  const [feedbackNotice, setFeedbackNotice] = useState('')
 
   useEffect(() => {
-    Promise.all([request('/api/agent/status'), request('/api/memory'), request('/api/profile')])
-      .then(([nextStatus, nextMemories, profile]) => {
+    Promise.all([request('/api/agent/status'), request('/api/memory'), request('/api/profile'), request('/api/agent/jobs/feedback')])
+      .then(([nextStatus, nextMemories, profile, feedback]) => {
         setStatus(nextStatus)
         setMemories(nextMemories)
         setLocation(profile.location || '')
+        setFeedbackByJob(Object.fromEntries(feedback.map((item) => [jobKey(item.jobUrl), item])))
       })
       .catch((error) => onError(error.message))
   }, [onError])
@@ -184,7 +247,8 @@ export default function MemoryAgent({ onError, onNotify }) {
   }
 
   const runSearch = async (event) => {
-    event.preventDefault()
+    event?.preventDefault()
+    setActiveTab('search')
     setSearching(true)
     setResult(null)
     try {
@@ -195,17 +259,43 @@ export default function MemoryAgent({ onError, onNotify }) {
     finally { setSearching(false) }
   }
 
+  const saveFeedback = async (job, feedbackType) => {
+    const key = jobKey(job.url)
+    setSavingFeedback(key)
+    try {
+      if (feedbackType) {
+        const saved = await request('/api/agent/jobs/feedback', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job, feedbackType }),
+        })
+        setFeedbackByJob((current) => ({ ...current, [jobKey(saved.jobUrl)]: saved }))
+        const label = JOB_FEEDBACK_OPTIONS.find(([value]) => value === feedbackType)?.[1] || 'Feedback'
+        setFeedbackNotice(`${label} saved. The next fresh search will adapt to this decision.`)
+        onNotify(`${label} saved to agent memory`)
+      } else {
+        await request(`/api/agent/jobs/feedback?url=${encodeURIComponent(job.url)}`, { method: 'DELETE' })
+        setFeedbackByJob((current) => {
+          const next = { ...current }
+          delete next[key]
+          return next
+        })
+        setFeedbackNotice('Feedback removed. Future searches will no longer use this decision.')
+        onNotify('Job feedback removed')
+      }
+    } catch (error) { onError(error.message) }
+    finally { setSavingFeedback('') }
+  }
+
   return <section className="page memory-page">
     <input className="sr-only" ref={fileRef} type="file" accept="application/pdf,.pdf" onChange={uploadResume} />
-    <CareerHeader memories={memories} status={status} uploading={uploading} onUpload={() => fileRef.current?.click()} />
+    <CareerHeader memories={memories} uploading={uploading} onUpload={() => fileRef.current?.click()} />
     <section className="career-workspace">
       <div className="career-tabs" role="tablist" aria-label="Career agent views">
         {TABS.map((tab) => <button role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} key={tab.id} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>)}
       </div>
       <div className="career-view" role="tabpanel">
-        {activeTab === 'overview' ? <OverviewView memories={memories} status={status} uploading={uploading} onUpload={() => fileRef.current?.click()} onSearch={() => setActiveTab('search')} /> : null}
+        {activeTab === 'overview' ? <OverviewView memories={memories} status={status} uploading={uploading} searching={searching} result={result} location={location} workMode={workMode} onUpload={() => fileRef.current?.click()} onMemory={() => setActiveTab('memory')} onFindJobs={runSearch} onSearch={() => setActiveTab('search')} /> : null}
         {activeTab === 'memory' ? <MemoryView grouped={grouped} memories={memories} onRemove={removeMemory} onUpload={() => fileRef.current?.click()} /> : null}
-        {activeTab === 'search' ? <JobSearchView memories={memories} location={location} setLocation={setLocation} workMode={workMode} setWorkMode={setWorkMode} searching={searching} result={result} cacheMinutes={status.jobSearchCacheMinutes} onSearch={runSearch} onUpload={() => fileRef.current?.click()} /> : null}
+        {activeTab === 'search' ? <JobSearchView memories={memories} location={location} setLocation={setLocation} workMode={workMode} setWorkMode={setWorkMode} searching={searching} result={result} cacheMinutes={status.jobSearchCacheMinutes} feedbackByJob={feedbackByJob} savingFeedback={savingFeedback} feedbackNotice={feedbackNotice} onFeedback={saveFeedback} onSearch={runSearch} onUpload={() => fileRef.current?.click()} /> : null}
       </div>
     </section>
   </section>
