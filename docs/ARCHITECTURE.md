@@ -2,7 +2,7 @@
 
 ## Hackathon fit
 
-Northstar is an agentic job-application workspace. A candidate uploads a PDF resume, reviews the extracted career memories, and asks the agent to evaluate a job. The agent retrieves semantically relevant memories before producing an evidence-backed match report.
+Northstar is an agentic job-application workspace. A candidate uploads a PDF resume, reviews the extracted career memories, and asks the agent to discover suitable work. The agent searches current public listings and ranks them using the candidate's persistent memory.
 
 Required integrations:
 
@@ -16,15 +16,17 @@ OpenAI supplies resume extraction, embeddings, and the reasoning model. It is an
 
 ```text
 Browser
-  | PDF resume / job description
+  | PDF resume / job-search preferences
   v
 Northstar on Amazon ECS
-  |-- OpenAI Responses API: grounded resume extraction + job evaluation
-  |-- OpenAI Embeddings API: resume and job vectors
+  |-- CockroachDB freshness cache: return identical searches without model usage
+  |-- OpenAI Responses API: grounded resume extraction + live web job discovery
+  |-- OpenAI Embeddings API: resume-memory vectors
   v
 CockroachDB Cloud
   |-- candidate_profiles: structured candidate summary
   |-- candidate_memories: inspectable facts + VECTOR(1536)
+  |-- candidate_job_search_cache: per-user results with freshness timestamps
   `-- distributed cosine vector index: relevant memory retrieval
 
 Codex / MCP-compatible agent
@@ -35,7 +37,7 @@ Codex / MCP-compatible agent
 
 - Resume facts include a source filename and confidence score.
 - The user can inspect and delete individual memories.
-- Job matches cite the exact candidate memories used.
+- Job rankings explain which candidate experience supports each result.
 - The agent is instructed never to invent qualifications.
 - Applying to a job remains a user-approved external action.
 - MCP is configured with read-only tools for the demo.

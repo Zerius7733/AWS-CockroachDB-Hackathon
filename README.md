@@ -1,13 +1,13 @@
 # Northstar
 
-Northstar is a job application tracker with an evidence-backed career-memory agent. Upload a PDF resume, inspect the facts the agent remembers, and evaluate job descriptions using semantically retrieved candidate experience.
+Northstar is a job application tracker with an evidence-backed career-memory agent. Upload a PDF resume, inspect the facts the agent remembers, and search live public job listings using persistent candidate experience.
 
 ## Hackathon integrations
 
 - **CockroachDB Distributed Vector Indexing:** persistent career memories and cosine-similarity retrieval.
 - **CockroachDB Cloud MCP Server:** read-only agent inspection of the live memory schema and retrieval queries.
 - **Amazon ECS or Lambda:** containerized or serverless deployment with per-user data isolation.
-- **OpenAI:** structured resume extraction, embeddings, and job-match reasoning.
+- **OpenAI:** structured resume extraction, embeddings, live web job discovery, and memory-backed ranking.
 
 See [the architecture](docs/ARCHITECTURE.md) and [MCP setup](docs/MCP_SETUP.md).
 
@@ -33,7 +33,9 @@ npm run db:claim-demo -- you@example.com
 
 `AUTH_SESSION_DAYS` is optional and defaults to 7 days. Production must run behind HTTPS so the session cookie receives its `Secure` attribute. Password reset and email verification are not yet implemented, so use test accounts until those recovery flows exist.
 
-Open **Career agent** to upload a PDF resume, inspect the durable facts extracted from it, and run a memory-backed job match. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional; their defaults are documented in `.env.example`.
+Open **Career agent** to upload a PDF resume, inspect the durable facts extracted from it, and search current public job listings ranked against that memory. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional; their defaults are documented in `.env.example`.
+
+Identical job searches are cached per user in CockroachDB. The cache key includes the search preferences and the current résumé-memory contents, so changing memory automatically invalidates prior results. `JOB_SEARCH_CACHE_MINUTES` controls freshness and defaults to 60 minutes; cache hits make no OpenAI or web-search request.
 
 ### Migrate existing CSV data
 
@@ -47,7 +49,7 @@ The migration replaces the applications currently in CockroachDB only when a loc
 
 ## CockroachDB memory schema
 
-The agent initializes [`db/memory.sql`](db/memory.sql) on the first memory request. It creates `candidate_profiles` and `candidate_memories`, including a user-prefixed cosine vector index. These tables share the application's bounded CockroachDB connection pool while remaining isolated from the application tracker tables in [`db/schema.sql`](db/schema.sql).
+The agent initializes [`db/memory.sql`](db/memory.sql) on the first memory request. It creates `candidate_profiles`, `candidate_memories`, and `candidate_job_search_cache`, including a user-prefixed cosine vector index. These tables share the application's bounded CockroachDB connection pool while remaining isolated from the application tracker tables in [`db/schema.sql`](db/schema.sql).
 
 ## Deploy as one AWS Lambda
 
@@ -73,6 +75,7 @@ DATABASE_URL
 AUTH_SESSION_DAYS (optional)
 OPENAI_MODEL (optional)
 OPENAI_EMBEDDING_MODEL (optional)
+JOB_SEARCH_CACHE_MINUTES (optional, defaults to 60)
 ```
 
 Do not bake `.env` into the image. Lambda's synchronous request limit requires resume PDFs to stay below 4 MB in this deployment.
