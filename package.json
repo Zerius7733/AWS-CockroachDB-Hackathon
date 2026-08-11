@@ -10,6 +10,7 @@
     "dev": "concurrently \"node --watch --env-file-if-exists=.env server.js\" \"vite --host 0.0.0.0\"",
     "build": "vite build",
     "db:migrate-csv": "node --env-file-if-exists=.env scripts/migrate-csv.js",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate-database.js",
     "db:claim-demo": "node --env-file-if-exists=.env scripts/claim-demo-data.js",
     "db:verify-isolation": "node --env-file-if-exists=.env scripts/verify-user-isolation.js",
     "test": "node --test",

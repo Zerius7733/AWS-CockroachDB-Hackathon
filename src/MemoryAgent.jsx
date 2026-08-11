@@ -75,7 +75,7 @@ export default function MemoryAgent({ onError, onNotify }) {
     event.target.value = ''
     if (!file) return
     if (file.type !== 'application/pdf') return onError('Please choose a PDF resume')
-    if (file.size > 7_500_000) return onError('Resume must be smaller than 7.5 MB')
+    if (file.size > 4_000_000) return onError('Resume must be smaller than 4 MB')
     setUploading(true)
     setResult(null)
     try {
@@ -121,7 +121,7 @@ export default function MemoryAgent({ onError, onNotify }) {
       <div className="resume-drop">
         <FileText />
         <strong>{memories.length ? `${memories.length} memories available` : 'Add your resume'}</strong>
-        <p>PDF, up to 7.5 MB. The original file is sent only to the server-side extraction endpoint.</p>
+        <p>PDF, up to 4 MB. The original file is sent only to the server-side extraction endpoint.</p>
         <button className="button primary" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? <><LoaderCircle className="spin" />Building memory…</> : <><UploadCloud />{memories.length ? 'Replace resume' : 'Upload resume'}</>}</button>
         <input className="sr-only" ref={fileRef} type="file" accept="application/pdf,.pdf" onChange={uploadResume} />
       </div>

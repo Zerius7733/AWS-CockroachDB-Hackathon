@@ -49,9 +49,23 @@ The migration replaces the applications currently in CockroachDB only when a loc
 
 The agent initializes [`db/memory.sql`](db/memory.sql) on the first memory request. It creates `candidate_profiles` and `candidate_memories`, including a user-prefixed cosine vector index. These tables share the application's bounded CockroachDB connection pool while remaining isolated from the application tracker tables in [`db/schema.sql`](db/schema.sql).
 
-## Deploy on AWS ECS
+## Deploy as one AWS Lambda
 
-Build the included Dockerfile, push it to Amazon ECR, and run it as an ECS service with these secrets injected into the task:
+The included multi-stage Dockerfile packages the React build and Express API together. AWS Lambda Web Adapter exposes the existing HTTP server through a Lambda Function URL on port `8080`, so no API Gateway, S3, or separate frontend deployment is required.
+
+Run schema migrations once from a trusted development or deployment environment before creating or updating the Lambda:
+
+```bash
+npm run db:migrate
+```
+
+Build the image for the same architecture selected on Lambda, push it to an Amazon ECR repository in the same region, and create an image-based Lambda function:
+
+```bash
+docker build --platform linux/amd64 -t northstar .
+```
+
+Configure at least 2 GB memory, a 120-second timeout, and a public Function URL. The image supplies these Lambda defaults: `PORT=8080`, `AWS_LWA_PORT=8080`, `DATABASE_POOL_SIZE=1`, and `RUN_DB_MIGRATIONS=false`. Add these secrets and optional settings to the Lambda configuration:
 
 ```text
 OPENAI_API_KEY
@@ -61,7 +75,9 @@ OPENAI_MODEL (optional)
 OPENAI_EMBEDDING_MODEL (optional)
 ```
 
-Expose container port `3001` through an Application Load Balancer. Do not bake `.env` into the image.
+Do not bake `.env` into the image. Lambda's synchronous request limit requires resume PDFs to stay below 4 MB in this deployment.
+
+The same image can still run on ECS or another container host by routing traffic to port `8080`; set `RUN_DB_MIGRATIONS=true` only when startup-time schema setup is intentional.
 
 ## Chrome extension
 

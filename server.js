@@ -22,6 +22,7 @@ const defaultProfile = { firstName: 'Alex', lastName: 'Johnson', email: 'alex.jo
 const app = express()
 app.set('trust proxy', 1)
 app.use(express.json({ limit: '12mb' }))
+app.get('/health', (_req, res) => res.json({ ok: true }))
 
 const authEndpoint = (handler) => async (req, res) => {
   try { await handler(req, res) }
@@ -114,7 +115,9 @@ app.post('/api/memory/resume', async (req, res) => {
   try {
     const { filename, mimeType, base64 } = req.body || {}
     if (!filename || mimeType !== 'application/pdf' || !base64) return res.status(400).json({ error: 'A PDF resume is required' })
-    if (base64.length > 10_500_000) return res.status(413).json({ error: 'Resume must be smaller than 7.5 MB' })
+    const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+    const decodedBytes = Math.floor(base64.length * 3 / 4) - padding
+    if (decodedBytes > 4_000_000) return res.status(413).json({ error: 'Resume must be smaller than 4 MB' })
     if (!/^[A-Za-z0-9+/=]+$/.test(base64)) return res.status(400).json({ error: 'Resume data is invalid' })
 
     const profile = await extractResume({ filename, mimeType, base64 })
@@ -151,7 +154,8 @@ app.use(express.static(distPath))
 app.get(/.*/, (_req, res) => res.sendFile(path.join(distPath, 'index.html')))
 
 const port = process.env.PORT || 3001
-initializeDatabase()
+const prepareDatabase = process.env.RUN_DB_MIGRATIONS === 'false' ? Promise.resolve() : initializeDatabase()
+prepareDatabase
   .then(() => app.listen(port, () => console.log(`Northstar is running on http://localhost:${port}`)))
   .catch((error) => {
     console.error('Northstar could not connect to CockroachDB:', error.message)
