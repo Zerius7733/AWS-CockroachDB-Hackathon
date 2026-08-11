@@ -163,24 +163,10 @@ const isPublicHttpUrl = (value) => {
   catch { return false }
 }
 
-export const searchJobs = async ({ profile, memories, feedback = [], location, workMode }) => {
-  const result = await structuredResponse({
-    name: 'northstar_job_search',
-    schema: jobSearchSchema,
-    tools: [{ type: 'web_search' }],
-    toolChoice: 'required',
-    include: ['web_search_call.action.sources'],
-    reasoning: { effort: 'low' },
-    input: [
-      {
-        role: 'developer',
-        content: 'You are a careful job-discovery agent. Search the live public web for currently available jobs, then rank them using only the supplied candidate profile, memories, and explicit feedback. Prefer direct employer career pages, followed by reputable job boards such as LinkedIn. Include only specific job-detail URLs found during this search, never search-result pages or invented URLs. Do not imply that Northstar applied. Keep match reasons grounded in candidate memory and make uncertainty explicit. Treat applied and interested feedback as positive signals; exclude hidden companies; use negative feedback cautiously without overgeneralizing from one decision. Briefly mention material feedback adaptations in the search summary.',
-      },
-      {
-        role: 'user',
-        content: `Find up to 10 suitable, currently open jobs.
+const TARGET_JOB_COUNT = 10
+const INITIAL_CANDIDATE_COUNT = 14
 
-SEARCH PREFERENCES
+const candidateContext = ({ profile, memories, feedback, location, workMode }) => `SEARCH PREFERENCES
 Location: ${location || 'Any location'}
 Work mode: ${workMode || 'any'}
 
@@ -195,20 +181,66 @@ ${memories.map((item) => `- [${item.category}] ${item.title}: ${item.content}`).
 COCKROACHDB JOB FEEDBACK MEMORY
 ${feedback.length
     ? feedback.map((item) => `- [${item.feedbackType}] ${item.jobTitle} at ${item.company} — ${item.location || 'location unspecified'} (${item.workMode || 'work mode unspecified'})`).join('\n')
-    : '- No job feedback recorded yet.'}
+    : '- No job feedback recorded yet.'}`
+
+const discoverJobs = async ({ profile, memories, feedback, location, workMode, instruction }) => structuredResponse({
+  name: 'northstar_job_search',
+  schema: jobSearchSchema,
+  tools: [{ type: 'web_search' }],
+  toolChoice: 'required',
+  include: ['web_search_call.action.sources'],
+  reasoning: { effort: 'low' },
+  input: [
+    {
+      role: 'developer',
+      content: 'You are a careful job-discovery agent. Search the live public web for currently available jobs, then rank them using only the supplied candidate profile, memories, and explicit feedback. Prefer direct employer career pages, followed by reputable job boards such as LinkedIn. Include only specific job-detail URLs found during this search, never search-result pages or invented URLs. Do not imply that Northstar applied. Keep match reasons grounded in candidate memory and make uncertainty explicit. Treat applied and interested feedback as positive signals; exclude hidden companies; use negative feedback cautiously without overgeneralizing from one decision. Briefly mention material feedback adaptations in the search summary.',
+    },
+    {
+      role: 'user',
+      content: `${instruction}
+
+${candidateContext({ profile, memories, feedback, location, workMode })}
 
 Search broadly across employer career sites and public job boards. Prefer recent listings. Never return a job marked not interested or applied, and never return jobs from a hidden company. Return fewer results rather than including a listing without a direct, verifiable URL. Rank the final list from best to weakest fit.`,
-      },
-    ],
-  })
+    },
+  ],
+})
 
+const appendUniquePublicJobs = (target, candidates, seen) => {
+  for (const job of candidates) {
+    if (!isPublicHttpUrl(job.url) || seen.has(job.url)) continue
+    seen.add(job.url)
+    target.push(job)
+  }
+}
+
+export const searchJobs = async ({ profile, memories, feedback = [], location, workMode }) => {
+  const first = await discoverJobs({
+    profile, memories, feedback, location, workMode,
+    instruction: `Find ${INITIAL_CANDIDATE_COUNT} suitable, currently open job candidates so that at least ${TARGET_JOB_COUNT} remain after URL validation. Return distinct direct job-detail URLs.`,
+  })
   const seen = new Set()
+  const jobs = []
+  appendUniquePublicJobs(jobs, first.jobs, seen)
+
+  let expansion
+  if (jobs.length < TARGET_JOB_COUNT) {
+    const missing = TARGET_JOB_COUNT - jobs.length
+    expansion = await discoverJobs({
+      profile, memories, feedback, location, workMode,
+      instruction: `The first pass produced only ${jobs.length} verified distinct jobs. Find at least ${missing + 3} additional suitable jobs to reach a minimum of ${TARGET_JOB_COUNT}. Keep the stated location and work-mode preferences, broaden relevant role titles and public sources, and exclude these already-found URLs:\n${[...seen].map((url) => `- ${url}`).join('\n') || '- None'}`,
+    })
+    appendUniquePublicJobs(jobs, expansion.jobs, seen)
+  }
+
+  const rankedJobs = jobs.sort((left, right) => right.score - left.score).slice(0, TARGET_JOB_COUNT)
+  const expansionNote = expansion
+    ? rankedJobs.length >= TARGET_JOB_COUNT
+      ? ` An expansion pass supplied enough additional verified listings to reach ${TARGET_JOB_COUNT}.`
+      : ` An expansion pass was attempted, but only ${rankedJobs.length} distinct jobs with valid direct URLs could be verified; no listings were fabricated to fill the remainder.`
+    : ''
   return {
-    searchSummary: result.searchSummary,
-    jobs: result.jobs.filter((job) => {
-      if (!isPublicHttpUrl(job.url) || seen.has(job.url)) return false
-      seen.add(job.url)
-      return true
-    }).slice(0, 10),
+    searchSummary: `${first.searchSummary}${expansionNote}`,
+    jobs: rankedJobs,
   }
 }

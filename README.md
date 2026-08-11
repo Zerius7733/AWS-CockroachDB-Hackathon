@@ -37,6 +37,8 @@ Open **Career agent** to upload a PDF resume, inspect the durable facts extracte
 
 Identical job searches are cached per user in CockroachDB. The cache key includes the search preferences and the current résumé-memory contents, so changing memory automatically invalidates prior results. `JOB_SEARCH_CACHE_MINUTES` controls freshness and defaults to 60 minutes; cache hits make no OpenAI or web-search request.
 
+Fresh searches target 10 verified distinct jobs. The first web-search pass requests a larger candidate pool; if fewer than 10 public direct URLs survive validation, Northstar runs one expansion pass across broader relevant role titles and sources. It never invents listings to fill the count, so unusually restrictive searches may still return fewer than 10. The expansion pass can add one OpenAI/web-search request, while subsequent identical searches reuse the CockroachDB cache.
+
 Each job result also has a **Teach agent** control. Decisions such as interested, not interested, applied, hide company, wrong seniority, wrong industry, and poor location are stored per user in CockroachDB. Saving or clearing feedback does not call OpenAI. It invalidates stale search results, and the next fresh search uses the accumulated decisions when discovering and ranking jobs.
 
 ### Migrate existing CSV data
