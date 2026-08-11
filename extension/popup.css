@@ -1,0 +1,59 @@
+:root {
+  color: #111a35;
+  background: #fff;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  --ink: #111a35;
+  --muted: #697188;
+  --line: #e5e8ef;
+  --soft: #f6f7fa;
+  --coral: #ff5432;
+  --blue: #3468d9;
+}
+
+* { box-sizing: border-box; }
+body { width: 420px; min-height: 560px; margin: 0; background: #fff; }
+button, input, select, textarea { font: inherit; }
+.shell { padding: 0 22px 20px; }
+.app-header { height: 76px; display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+.brand-mark { width: 36px; height: 36px; display: grid; place-items: center; color: var(--coral); }
+.brand-mark svg { width: 34px; height: 34px; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.app-header strong { display: block; font-size: 17px; line-height: 1.1; letter-spacing: -.3px; }
+.app-header span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.page-status { max-width: 130px; overflow: hidden; color: #526078; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.intro { padding: 22px 0 17px; }
+.intro h1 { margin: 0; font-size: 24px; line-height: 1.2; letter-spacing: -.7px; }
+.intro p { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.notice { margin: 0 0 15px; padding: 11px 12px; border-radius: 9px; background: #fff2ed; color: #9d3b27; font-size: 12px; font-weight: 650; line-height: 1.4; }
+.notice.success { color: #087454; background: #eaf8f3; }
+.notice.error { color: #a52f2f; background: #fff0f0; }
+.hidden { display: none !important; }
+form { display: grid; gap: 14px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 12px; }
+.field { display: grid; align-content: start; gap: 6px; }
+.field label, .settings label { color: #3d465c; font-size: 12px; font-weight: 750; }
+.field label span { float: right; color: #8b92a2; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.field input, .field select, .field textarea, .settings input { width: 100%; min-height: 42px; border: 1px solid #dce0e8; border-radius: 8px; outline: 0; padding: 9px 11px; color: var(--ink); background: #fff; font-size: 13px; transition: border-color .15s, box-shadow .15s, background .15s; }
+.field textarea { resize: vertical; line-height: 1.45; }
+.field input:focus, .field select:focus, .field textarea:focus, .settings input:focus { border-color: #7996e0; box-shadow: 0 0 0 3px #eaf0ff; }
+.field > small { display: none; color: #d54d32; font-size: 10px; font-weight: 700; }
+.field.is-missing > small { display: block; }
+.field.is-missing input, .field.is-missing select { border-color: #f2a793; background: #fffaf8; }
+.more-fields, .settings { border: 1px solid var(--line); border-radius: 9px; background: #fafbfc; }
+.more-fields summary, .settings summary { min-height: 42px; padding: 0 12px; display: flex; align-items: center; cursor: pointer; color: #46516a; font-size: 12px; font-weight: 750; list-style: none; }
+.more-fields summary::after, .settings summary::after { content: '+'; margin-left: auto; color: #7a8294; font-size: 16px; }
+.more-fields[open] summary::after, .settings[open] summary::after { content: '−'; }
+.details-body { display: grid; gap: 13px; padding: 0 12px 13px; border-top: 1px solid var(--line); padding-top: 12px; }
+.primary-button, .open-button { min-height: 46px; border: 0; border-radius: 9px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-weight: 800; font-size: 13px; }
+.primary-button { color: white; background: var(--coral); box-shadow: 0 7px 18px rgba(255,84,50,.2); }
+.primary-button:hover { background: #eb4728; }
+.primary-button:disabled { cursor: wait; opacity: .65; }
+.primary-button svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.open-button { color: #2458ca; background: #edf3ff; }
+.settings { margin-top: 14px; }
+.settings > div { padding: 0 12px 13px; }
+.settings input { margin-top: 7px; }
+.settings small { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.spinner { animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }

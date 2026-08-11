@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Northstar Job Capture</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="app-header">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M16 3.5c.4 7.2 1.4 8.3 8.5 8.8-7.1.5-8.1 1.6-8.5 8.8-.4-7.2-1.4-8.3-8.5-8.8 7.1-.5 8.1-1.6 8.5-8.8Z"/><path d="M25.5 20.5c.2 3.8.8 4.4 4.5 4.7-3.7.3-4.3.9-4.5 4.7-.2-3.8-.8-4.4-4.5-4.7 3.7-.3 4.3-.9 4.5-4.7Z"/></svg>
+        </div>
+        <div>
+          <strong>Northstar</strong>
+          <span>Job capture</span>
+        </div>
+        <div class="page-status" id="page-status">Reading page…</div>
+      </header>
+
+      <section class="intro">
+        <h1>Review this application</h1>
+        <p id="capture-summary">Pulling details from the current page.</p>
+      </section>
+
+      <div class="notice hidden" id="notice" role="status"></div>
+
+      <form id="application-form">
+        <div class="field" data-field="company">
+          <label for="company">Company <span>Required</span></label>
+          <input id="company" name="company" required autocomplete="organization" />
+          <small>Needs your input</small>
+        </div>
+
+        <div class="field" data-field="role">
+          <label for="role">Role <span>Required</span></label>
+          <input id="role" name="role" required autocomplete="organization-title" />
+          <small>Needs your input</small>
+        </div>
+
+        <div class="field-row">
+          <div class="field" data-field="type">
+            <label for="type">Job type</label>
+            <select id="type" name="type">
+              <option value="">Select type</option>
+              <option>Full-time</option>
+              <option>Internship</option>
+              <option>Part-time</option>
+              <option>Contract</option>
+              <option>Temporary</option>
+              <option>Graduate</option>
+            </select>
+            <small>Needs your input</small>
+          </div>
+          <div class="field" data-field="appliedDate">
+            <label for="appliedDate">Applied date</label>
+            <input id="appliedDate" name="appliedDate" type="date" />
+            <small>Needs your input</small>
+          </div>
+        </div>
+
+        <div class="field" data-field="location">
+          <label for="location">Location</label>
+          <input id="location" name="location" autocomplete="address-level2" placeholder="e.g. Singapore or Remote" />
+          <small>Needs your input</small>
+        </div>
+
+        <div class="field" data-field="salary">
+          <label for="salary">Salary <span>Optional</span></label>
+          <input id="salary" name="salary" placeholder="e.g. SGD 4,500 per month" />
+        </div>
+
+        <div class="field-row">
+          <div class="field" data-field="status">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+              <option>Applied</option>
+              <option>Screening</option>
+              <option>Interview</option>
+              <option>Offer</option>
+              <option>Closed</option>
+            </select>
+          </div>
+          <div class="field" data-field="source">
+            <label for="source">Source</label>
+            <input id="source" name="source" placeholder="e.g. LinkedIn" />
+            <small>Needs your input</small>
+          </div>
+        </div>
+
+        <details class="more-fields">
+          <summary>Next step and notes</summary>
+          <div class="details-body">
+            <div class="field-row">
+              <div class="field">
+                <label for="nextStep">Next step</label>
+                <input id="nextStep" name="nextStep" placeholder="e.g. Follow up" />
+              </div>
+              <div class="field">
+                <label for="nextDate">Next date</label>
+                <input id="nextDate" name="nextDate" type="date" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" rows="3" placeholder="Anything worth remembering"></textarea>
+            </div>
+          </div>
+        </details>
+
+        <input id="url" name="url" type="hidden" />
+        <button class="primary-button" id="submit-button" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Log application</span>
+        </button>
+        <button class="open-button hidden" id="open-northstar" type="button">Open in Northstar</button>
+      </form>
+
+      <details class="settings">
+        <summary>Connection settings</summary>
+        <div>
+          <label for="tracker-url">Northstar address</label>
+          <input id="tracker-url" type="url" value="https://application-tracker-production-2208.up.railway.app" spellcheck="false" />
+          <small>This is the Railway tracker that receives captured applications.</small>
+        </div>
+      </details>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

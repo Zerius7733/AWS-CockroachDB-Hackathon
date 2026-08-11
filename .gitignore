@@ -1,1 +1,13 @@
 .codex/config.toml
+node_modules/
+dist/
+.DS_Store
+
+# Northstar stores personal application and profile data here.
+data/*.csv
+!data/*.example.csv
+
+# Local visual QA artifacts.
+/design-concept.png
+/northstar-desktop.png
+/northstar-mobile.png
