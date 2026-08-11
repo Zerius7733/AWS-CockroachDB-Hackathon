@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "auditing-cloud-cluster-security": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-security-and-governance/auditing-cloud-cluster-security/SKILL.md",
+      "computedHash": "05a2d0ee1f59855d3a179de30de7ddee4b1461fa946d75d4eea4a9c1c5495ba9"
+    },
+    "auditing-table-statistics": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-observability-and-diagnostics/auditing-table-statistics/SKILL.md",
+      "computedHash": "fd78594867ae91b9d0109b16caa3d23a59ef659f7abfa9522366f574ddf1d7a8"
+    },
+    "cockroachdb-sql": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-query-and-schema-design/cockroachdb-sql/SKILL.md",
+      "computedHash": "58ad5998f40f23961b6d504b1f3d586157b4c1c868bd3d1e706aa6dcc728a492"
+    },
+    "designing-application-transactions": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-application-development/designing-application-transactions/SKILL.md",
+      "computedHash": "ca6f7c795012ee06054222fd576ffea9b303816ca42e20cb3a9cf4aaacd87f68"
+    },
+    "hardening-user-privileges": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-security-and-governance/hardening-user-privileges/SKILL.md",
+      "computedHash": "5a25bb51b1f48e329bfe24e4a19c9065161b49958b842a24397b295d41b575be"
+    },
+    "profiling-statement-fingerprints": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-observability-and-diagnostics/profiling-statement-fingerprints/SKILL.md",
+      "computedHash": "8a302cb85c790b4af2c84e4ec4a740ec832679cdede3969556780b6cee5a06bd"
+    },
+    "reviewing-cluster-health": {
+      "source": "cockroachlabs/cockroachdb-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cockroachdb-operations-and-lifecycle/reviewing-cluster-health/SKILL.md",
+      "computedHash": "a9be377e330f84e4cfe471d342328d9ac3794885bca49bd125cefcc7db748f81"
+    }
+  }
+}
