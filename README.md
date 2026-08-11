@@ -9,9 +9,19 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. Application data is persisted in `data/applications.csv`; editable workspace profile details are stored in `data/profile.csv`.
+Copy `.env.example` to `.env`, then set `DATABASE_URL` to the General connection string from CockroachDB Cloud's **Connect** dialog. Keep `sslmode=verify-full` enabled. The npm scripts load `.env` automatically for local development.
 
-The live CSV files are intentionally excluded from Git because they contain personal information. On a fresh installation, Northstar creates an empty `data/applications.csv` automatically. The `.example.csv` files document the expected columns without publishing real application data.
+Open `http://localhost:5173`. Application and profile data are persisted in CockroachDB. The server creates the required tables and indexes on startup. CSV import/export remains available for backups and portability.
+
+### Migrate existing CSV data
+
+If `data/applications.csv` or `data/profile.csv` exists, migrate it once after setting `DATABASE_URL`:
+
+```bash
+npm run db:migrate-csv
+```
+
+The migration replaces the applications currently in CockroachDB only when a local applications CSV contains rows. It does not delete the original files.
 
 ## Chrome extension
 
@@ -27,4 +37,4 @@ The first save asks for permission to connect to your Northstar address. This co
 
 ## Deploy to Railway
 
-Connect this repository to Railway. The included `railway.json` builds the Vite client and starts the Express server. Add a Railway volume mounted at `/app/data` if you want the CSV file to survive container replacements and redeploys. Without a volume, it persists only for the lifetime of the current container.
+Connect this repository to Railway. The included `railway.json` builds the Vite client and starts the Express server. Add `DATABASE_URL` and optionally `DATABASE_POOL_SIZE` as Railway environment variables. A persistent Railway volume is no longer required.
