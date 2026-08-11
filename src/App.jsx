@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Menu, MoreHorizontal, Pencil, Plus, Search, Sparkles, Bot,
   Target, Trash2, TrendingUp, Upload, UserRound, X, LogOut,
 } from 'lucide-react'
+import { request } from './api.js'
 import MemoryAgent from './MemoryAgent.jsx'
 
 const NAV = [
@@ -18,20 +19,8 @@ const NAV = [
 const STATUSES = ['Applied', 'Screening', 'Interview', 'Offer', 'Closed']
 const STATUS_CLASS = Object.fromEntries(STATUSES.map((status) => [status, status.toLowerCase()]))
 
-const request = async (url, options) => {
-  const response = await fetch(url, options)
-  const contentType = response.headers.get('content-type') || ''
-  const body = contentType.includes('application/json') ? await response.json() : null
-  if (!response.ok) {
-    const error = new Error(body?.error || `Request failed (${response.status})`)
-    error.status = response.status
-    throw error
-  }
-  return body
-}
-
 const api = {
-  me() { return request('/api/auth/me') },
+  me() { return request('/api/auth/me', { expectedStatuses: [401] }) },
   login(credentials) {
     return request('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credentials) })
   },

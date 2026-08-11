@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BrainCircuit, BriefcaseBusiness, ExternalLink, LoaderCircle, MapPin, Search, ShieldCheck, Trash2, UploadCloud,
 } from 'lucide-react'
+import { request } from './api.js'
 import './memory-agent.css'
 
 const readAsBase64 = (file) => new Promise((resolve, reject) => {
@@ -10,16 +11,6 @@ const readAsBase64 = (file) => new Promise((resolve, reject) => {
   reader.onerror = () => reject(new Error('Could not read the resume'))
   reader.readAsDataURL(file)
 })
-
-const request = async (url, options) => {
-  const response = await fetch(url, options)
-  if (response.status === 204) return null
-  const isJson = response.headers.get('content-type')?.includes('application/json')
-  const payload = isJson ? await response.json() : null
-  if (!response.ok) throw new Error(payload?.error || 'The agent could not complete that request')
-  if (!isJson) throw new Error('The Northstar API returned HTML instead of data. Restart npm run dev and refresh this page.')
-  return payload
-}
 
 const CATEGORY_LABELS = {
   skill: 'Skill', experience: 'Experience', achievement: 'Achievement', education: 'Education',

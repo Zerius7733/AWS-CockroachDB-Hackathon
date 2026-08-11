@@ -1,15 +1,56 @@
+import { logError, logInfo } from '../lib/logger.js'
+
 const OPENAI_URL = 'https://api.openai.com/v1'
+const DEFAULT_OPENAI_TIMEOUT_MS = 90_000
+
+const openaiTimeoutMs = () => {
+  const configured = Number(process.env.OPENAI_TIMEOUT_MS || DEFAULT_OPENAI_TIMEOUT_MS)
+  return Number.isFinite(configured) ? Math.min(240_000, Math.max(5_000, configured)) : DEFAULT_OPENAI_TIMEOUT_MS
+}
 
 const requestOpenAI = async (path, body) => {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) throw new Error('OPENAI_API_KEY is not configured')
-  const response = await fetch(`${OPENAI_URL}${path}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  const payload = await response.json()
-  if (!response.ok) throw new Error(payload.error?.message || `OpenAI request failed (${response.status})`)
+  const startedAt = Date.now()
+  const timeoutMs = openaiTimeoutMs()
+  logInfo('openai_request_started', { path, model: body.model, timeoutMs, webSearch: Boolean(body.tools?.some((tool) => tool.type === 'web_search')) })
+
+  let response
+  try {
+    response = await fetch(`${OPENAI_URL}${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+  } catch (error) {
+    const timedOut = ['AbortError', 'TimeoutError'].includes(error.name)
+    const requestError = Object.assign(
+      new Error(timedOut ? `OpenAI request timed out after ${timeoutMs} ms` : `OpenAI request failed: ${error.message}`),
+      { status: timedOut ? 504 : 502, code: timedOut ? 'OPENAI_TIMEOUT' : 'OPENAI_NETWORK_ERROR', cause: error },
+    )
+    logError('openai_request_failed', requestError, { path, model: body.model, durationMs: Date.now() - startedAt })
+    throw requestError
+  }
+
+  const openaiRequestId = response.headers.get('x-request-id') || undefined
+  const rawPayload = await response.text()
+  let payload
+  try { payload = rawPayload ? JSON.parse(rawPayload) : {} }
+  catch (error) {
+    const responseError = Object.assign(new Error('OpenAI returned an invalid JSON response'), { status: 502, code: 'OPENAI_INVALID_RESPONSE', cause: error })
+    logError('openai_response_invalid', responseError, { path, model: body.model, upstreamStatus: response.status, openaiRequestId, durationMs: Date.now() - startedAt })
+    throw responseError
+  }
+  if (!response.ok) {
+    const responseError = Object.assign(
+      new Error(payload.error?.message || `OpenAI request failed (${response.status})`),
+      { status: response.status === 429 ? 503 : 502, code: payload.error?.code || 'OPENAI_API_ERROR', upstreamStatus: response.status },
+    )
+    logError('openai_api_error', responseError, { path, model: body.model, upstreamStatus: response.status, openaiRequestId, durationMs: Date.now() - startedAt })
+    throw responseError
+  }
+  logInfo('openai_request_completed', { path, model: body.model, upstreamStatus: response.status, openaiRequestId, durationMs: Date.now() - startedAt })
   return payload
 }
 
@@ -85,8 +126,13 @@ const structuredResponse = async ({ input, schema, name, tools, toolChoice, incl
     text: { format: { type: 'json_schema', name, strict: true, schema } },
   })
   const text = outputText(response)
-  if (!text) throw new Error('OpenAI returned no structured output')
-  return JSON.parse(text)
+  if (!text) throw Object.assign(new Error('OpenAI returned no structured output'), { status: 502, code: 'OPENAI_EMPTY_OUTPUT' })
+  try { return JSON.parse(text) }
+  catch (error) {
+    const parseError = Object.assign(new Error('OpenAI returned invalid structured output'), { status: 502, code: 'OPENAI_INVALID_STRUCTURED_OUTPUT', cause: error })
+    logError('openai_structured_output_invalid', parseError, { name })
+    throw parseError
+  }
 }
 
 export const extractResume = async ({ filename, mimeType, base64 }) => structuredResponse({
