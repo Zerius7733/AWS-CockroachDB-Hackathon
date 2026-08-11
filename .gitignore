@@ -9,6 +9,8 @@ dist/
 # Northstar stores personal application and profile data here.
 data/*.csv
 !data/*.example.csv
+data/*.json
+!data/*.example.json
 
 # Local visual QA artifacts.
 /design-concept.png

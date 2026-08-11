@@ -1,17 +1,29 @@
 # Northstar
 
-A focused job application tracker with an overview, searchable application table, pipeline board, insights, and a Sankey-style application flow.
+Northstar is a job application tracker with an evidence-backed career-memory agent. Upload a PDF resume, inspect the facts the agent remembers, and evaluate job descriptions using semantically retrieved candidate experience.
+
+## Hackathon integrations
+
+- **CockroachDB Distributed Vector Indexing:** persistent career memories and cosine-similarity retrieval.
+- **CockroachDB Cloud MCP Server:** read-only agent inspection of the live memory schema and retrieval queries.
+- **Amazon ECS:** containerized deployment of the web application and agent API.
+- **OpenAI:** structured resume extraction, embeddings, and job-match reasoning.
+
+See [the architecture](docs/ARCHITECTURE.md) and [MCP setup](docs/MCP_SETUP.md).
 
 ## Run locally
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
-Copy `.env.example` to `.env`, then set `DATABASE_URL` to the General connection string from CockroachDB Cloud's **Connect** dialog. Keep `sslmode=verify-full` enabled. The npm scripts load `.env` automatically for local development.
+Add `DATABASE_URL` and `OPENAI_API_KEY` to `.env`. Use the General connection string from CockroachDB Cloud's **Connect** dialog and keep `sslmode=verify-full` enabled. The npm scripts load `.env` automatically for local development.
 
 Open `http://localhost:5173`. Application and profile data are persisted in CockroachDB. The server creates the required tables and indexes on startup. CSV import/export remains available for backups and portability.
+
+Open **Career agent** to upload a PDF resume, inspect the durable facts extracted from it, and run a memory-backed job match. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional; their defaults are documented in `.env.example`.
 
 ### Migrate existing CSV data
 
@@ -22,6 +34,23 @@ npm run db:migrate-csv
 ```
 
 The migration replaces the applications currently in CockroachDB only when a local applications CSV contains rows. It does not delete the original files.
+
+## CockroachDB memory schema
+
+The agent initializes [`db/memory.sql`](db/memory.sql) on the first memory request. It creates `candidate_profiles` and `candidate_memories`, including a user-prefixed cosine vector index. These tables share the application's bounded CockroachDB connection pool while remaining isolated from the application tracker tables in [`db/schema.sql`](db/schema.sql).
+
+## Deploy on AWS ECS
+
+Build the included Dockerfile, push it to Amazon ECR, and run it as an ECS service with these secrets injected into the task:
+
+```text
+OPENAI_API_KEY
+DATABASE_URL
+OPENAI_MODEL (optional)
+OPENAI_EMBEDDING_MODEL (optional)
+```
+
+Expose container port `3001` through an Application Load Balancer. Do not bake `.env` into the image.
 
 ## Chrome extension
 
@@ -37,4 +66,4 @@ The first save asks for permission to connect to your Northstar address. This co
 
 ## Deploy to Railway
 
-Connect this repository to Railway. The included `railway.json` builds the Vite client and starts the Express server. Add `DATABASE_URL` and optionally `DATABASE_POOL_SIZE` as Railway environment variables. A persistent Railway volume is no longer required.
+Connect this repository to Railway. The included `railway.json` builds the Vite client and starts the Express server. Add `DATABASE_URL`, `OPENAI_API_KEY`, and optionally the model and pool settings as Railway environment variables. A persistent Railway volume is no longer required.
