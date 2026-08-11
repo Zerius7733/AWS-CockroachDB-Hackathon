@@ -16,7 +16,7 @@ OpenAI supplies resume extraction, embeddings, and the reasoning model. It is an
 
 ```text
 Browser
-  | PDF resume / job-search preferences
+  | PDF resume / job-search preferences / explicit job feedback
   v
 Northstar on Amazon ECS
   |-- CockroachDB freshness cache: return identical searches without model usage
@@ -27,6 +27,7 @@ CockroachDB Cloud
   |-- candidate_profiles: structured candidate summary
   |-- candidate_memories: inspectable facts + VECTOR(1536)
   |-- candidate_job_search_cache: per-user results with freshness timestamps
+  |-- candidate_job_feedback: durable interested/rejected/applied preference memory
   `-- distributed cosine vector index: relevant memory retrieval
 
 Codex / MCP-compatible agent
@@ -37,6 +38,7 @@ Codex / MCP-compatible agent
 
 - Resume facts include a source filename and confidence score.
 - The user can inspect and delete individual memories.
+- The user can save or clear per-job feedback without a model call; future searches adapt to it.
 - Job rankings explain which candidate experience supports each result.
 - The agent is instructed never to invent qualifications.
 - Applying to a job remains a user-approved external action.

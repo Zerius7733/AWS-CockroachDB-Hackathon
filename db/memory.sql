@@ -31,3 +31,22 @@ CREATE TABLE IF NOT EXISTS candidate_job_search_cache (
   PRIMARY KEY (user_id, search_key),
   INDEX candidate_job_search_cache_created_idx (user_id, created_at DESC)
 );
+
+CREATE TABLE IF NOT EXISTS candidate_job_feedback (
+  user_id STRING NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  job_url STRING NOT NULL,
+  feedback_type STRING NOT NULL CHECK (feedback_type IN (
+    'interested', 'not_interested', 'applied', 'hide_company',
+    'wrong_seniority', 'wrong_industry', 'poor_location'
+  )),
+  job_title STRING NOT NULL,
+  company STRING NOT NULL,
+  location STRING NOT NULL DEFAULT '',
+  work_mode STRING NOT NULL DEFAULT 'unspecified',
+  employment_type STRING NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, job_url),
+  INDEX candidate_job_feedback_updated_idx (user_id, updated_at DESC),
+  INDEX candidate_job_feedback_company_idx (user_id, company)
+);

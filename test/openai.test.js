@@ -87,6 +87,7 @@ test('job search uses live web search and returns only public job URLs', async (
   const response = await searchJobs({
     profile: { summary: 'Platform engineer', targetRoles: ['Platform Engineer'], yearsExperience: 4 },
     memories: [{ category: 'skill', title: 'SQL', content: 'Built SQL automation.' }],
+    feedback: [{ feedbackType: 'wrong_industry', jobTitle: 'Security Analyst', company: 'Example Security', location: 'Singapore', workMode: 'on-site' }],
     location: 'Singapore',
     workMode: 'remote',
   })
@@ -95,6 +96,8 @@ test('job search uses live web search and returns only public job URLs', async (
   assert.equal(body.tool_choice, 'required')
   assert.deepEqual(body.include, ['web_search_call.action.sources'])
   assert.equal(body.text.format.name, 'northstar_job_search')
+  assert.match(body.input[1].content, /COCKROACHDB JOB FEEDBACK MEMORY/)
+  assert.match(body.input[1].content, /\[wrong_industry\] Security Analyst at Example Security/)
   assert.equal(response.jobs.length, 1)
   assert.equal(response.jobs[0].url, 'https://example.com/jobs/123')
 })

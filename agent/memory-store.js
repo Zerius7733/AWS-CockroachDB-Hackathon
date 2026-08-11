@@ -26,11 +26,13 @@ export const initializeMemoryStore = async () => {
   return pool
 }
 
-const getPool = async () => {
+export const getMemoryDatabase = async () => {
   if (!process.env.DATABASE_URL) return null
   if (process.env.RUN_DB_MIGRATIONS !== 'false') return initializeMemoryStore()
   return getDatabasePool()
 }
+
+const getPool = getMemoryDatabase
 
 const readLocal = async () => {
   try {
