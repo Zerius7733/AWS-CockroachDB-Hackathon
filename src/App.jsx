@@ -4,7 +4,7 @@ import {
   ArrowDownToLine, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
   CalendarDays, Check, ChevronDown, CirclePlus, Download, FileUp, Gauge,
   LayoutDashboard, Menu, MoreHorizontal, Pencil, Plus, Search, Sparkles, Bot,
-  Target, Trash2, TrendingUp, Upload, UserRound, X,
+  Target, Trash2, TrendingUp, Upload, UserRound, X, LogOut,
 } from 'lucide-react'
 import MemoryAgent from './MemoryAgent.jsx'
 
@@ -18,43 +18,46 @@ const NAV = [
 const STATUSES = ['Applied', 'Screening', 'Interview', 'Offer', 'Closed']
 const STATUS_CLASS = Object.fromEntries(STATUSES.map((status) => [status, status.toLowerCase()]))
 
+const request = async (url, options) => {
+  const response = await fetch(url, options)
+  const contentType = response.headers.get('content-type') || ''
+  const body = contentType.includes('application/json') ? await response.json() : null
+  if (!response.ok) {
+    const error = new Error(body?.error || `Request failed (${response.status})`)
+    error.status = response.status
+    throw error
+  }
+  return body
+}
+
 const api = {
-  async list() {
-    const response = await fetch('/api/applications')
-    if (!response.ok) throw new Error('Could not load applications')
-    return response.json()
+  me() { return request('/api/auth/me') },
+  login(credentials) {
+    return request('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credentials) })
   },
-  async save(item) {
-    const response = await fetch(item.id ? `/api/applications/${item.id}` : '/api/applications', {
+  register(details) {
+    return request('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details) })
+  },
+  logout() { return request('/api/auth/logout', { method: 'POST' }) },
+  list() { return request('/api/applications') },
+  save(item) {
+    return request(item.id ? `/api/applications/${item.id}` : '/api/applications', {
       method: item.id ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
     })
-    if (!response.ok) throw new Error('Could not save application')
-    return response.json()
   },
-  async remove(id) {
-    const response = await fetch(`/api/applications/${id}`, { method: 'DELETE' })
-    if (!response.ok) throw new Error('Could not delete application')
-  },
-  async importCsv(csv) {
-    const response = await fetch('/api/import', {
+  remove(id) { return request(`/api/applications/${id}`, { method: 'DELETE' }) },
+  importCsv(csv) {
+    return request('/api/import', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }),
     })
-    if (!response.ok) throw new Error((await response.json()).error || 'Could not import CSV')
-    return response.json()
   },
-  async getProfile() {
-    const response = await fetch('/api/profile')
-    if (!response.ok) throw new Error('Could not load profile')
-    return response.json()
-  },
-  async saveProfile(profile) {
-    const response = await fetch('/api/profile', {
+  getProfile() { return request('/api/profile') },
+  saveProfile(profile) {
+    return request('/api/profile', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(profile),
     })
-    if (!response.ok) throw new Error((await response.json()).error || 'Could not save profile')
-    return response.json()
   },
 }
 
@@ -75,7 +78,7 @@ function CompanyMark({ company }) {
 
 const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'NS'
 
-function AppShell({ page, setPage, children, onAdd, onImport, profile, onSaveProfile }) {
+function AppShell({ page, setPage, children, onAdd, onImport, profile, onSaveProfile, user, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
@@ -103,8 +106,8 @@ function AppShell({ page, setPage, children, onAdd, onImport, profile, onSavePro
           ))}
         </nav>
         <div className="sidebar-tools">
-          <p>Data lives in your CSV</p>
-          <span>Import a backup or download the latest copy anytime.</span>
+          <p>Private CockroachDB workspace</p>
+          <span>Your applications and agent memory are isolated to this account.</span>
           <div className="tool-actions">
             <button className="icon-button" onClick={() => fileRef.current?.click()} title="Import CSV"><Upload /></button>
             <a className="icon-button" href="/api/export" title="Export CSV"><Download /></a>
@@ -115,6 +118,7 @@ function AppShell({ page, setPage, children, onAdd, onImport, profile, onSavePro
           {profileOpen ? <div className="profile-menu" role="menu">
             <button role="menuitem" onClick={() => { setProfileOpen(false); setProfileModalOpen(true) }}><UserRound /> Edit profile</button>
             <a role="menuitem" href="/api/export"><Download /> Export CSV</a>
+            <button role="menuitem" onClick={onLogout}><LogOut /> Sign out</button>
           </div> : null}
           <button className="profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen} aria-haspopup="menu">
             <span>{initials(`${profile.firstName} ${profile.lastName}`)}</span><div><strong>{profile.firstName}</strong><small>{profile.role || 'Job search workspace'}</small></div><ChevronDown className={profileOpen ? 'rotated' : ''} />
@@ -391,6 +395,46 @@ function ApplicationModal({ item, onClose, onSave }) {
 
 function Toast({ message }) { return message ? <div className="toast"><Check />{message}</div> : null }
 
+function SignIn({ onAuthenticated }) {
+  const [mode, setMode] = useState('login')
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '' })
+  const [submitting, setSubmitting] = useState(false)
+  const [message, setMessage] = useState('')
+  const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
+  const submit = async (event) => {
+    event.preventDefault()
+    setSubmitting(true)
+    setMessage('')
+    try {
+      const user = await (mode === 'login' ? api.login(form) : api.register(form))
+      await onAuthenticated(user)
+    } catch (error) { setMessage(error.message) }
+    finally { setSubmitting(false) }
+  }
+  return <main className="sign-in-page">
+    <section className="sign-in-card">
+      <span className="brand-mark"><Sparkles /></span>
+      <p className="page-kicker">Private career workspace</p>
+      <h1>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
+      <p>{mode === 'login' ? 'Sign in to access your private Northstar workspace.' : 'Your applications and AI memories stay isolated to your account.'}</p>
+      <form className="auth-form" onSubmit={submit}>
+        {mode === 'register' ? <div className="auth-name-row">
+          <label>First name<input required autoComplete="given-name" value={form.firstName} onChange={update('firstName')} /></label>
+          <label>Last name<input required autoComplete="family-name" value={form.lastName} onChange={update('lastName')} /></label>
+        </div> : null}
+        <label>Email address<input required type="email" autoComplete="email" value={form.email} onChange={update('email')} /></label>
+        <label>Password<input required type="password" minLength={mode === 'register' ? 12 : undefined} maxLength="128" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={form.password} onChange={update('password')} /></label>
+        {mode === 'register' ? <small>Use at least 12 characters.</small> : null}
+        {message ? <div className="auth-error" role="alert">{message}</div> : null}
+        <button className="button primary" disabled={submitting}>{submitting ? 'Please wait…' : <>{mode === 'login' ? 'Sign in' : 'Create account'} <ArrowRight /></>}</button>
+      </form>
+      <button className="auth-switch" onClick={() => { setMode((current) => current === 'login' ? 'register' : 'login'); setMessage('') }}>
+        {mode === 'login' ? 'New to Northstar? Create an account' : 'Already have an account? Sign in'}
+      </button>
+    </section>
+  </main>
+}
+
 export default function App() {
   const [page, setPage] = useState(() => window.location.hash.slice(1) || 'overview')
   const [applications, setApplications] = useState([])
@@ -398,16 +442,26 @@ export default function App() {
   const [editing, setEditing] = useState(undefined)
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(null)
+  const [authenticationRequired, setAuthenticationRequired] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const notify = useCallback((message) => { setToast(message); window.setTimeout(() => setToast(''), 2400) }, [])
 
-  useEffect(() => {
-    Promise.all([api.list(), api.getProfile()])
-      .then(([nextApplications, nextProfile]) => { setApplications(nextApplications); setProfile(nextProfile) })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
+  const loadWorkspace = useCallback(async (identity) => {
+    const [nextApplications, nextProfile] = await Promise.all([api.list(), api.getProfile()])
+    setUser(identity)
+    setApplications(nextApplications)
+    setProfile(nextProfile)
+    setAuthenticationRequired(false)
   }, [])
+
+  useEffect(() => {
+    api.me()
+      .then(loadWorkspace)
+      .catch((e) => { if (e.status === 401) setAuthenticationRequired(true); else setError(e.message) })
+      .finally(() => setLoading(false))
+  }, [loadWorkspace])
   useEffect(() => { window.location.hash = page }, [page])
   useEffect(() => {
     const syncPageFromHash = () => {
@@ -444,6 +498,14 @@ export default function App() {
       return true
     } catch (e) { setError(e.message); return false }
   }
+  const signOut = async () => {
+    try {
+      await api.logout()
+      setUser(null)
+      setApplications([])
+      setAuthenticationRequired(true)
+    } catch (e) { setError(e.message) }
+  }
 
   const pages = {
     overview: <Overview applications={applications} setPage={setPage} onEdit={openEdit} profile={profile} />,
@@ -452,7 +514,8 @@ export default function App() {
     insights: <Insights applications={applications} />,
     agent: <MemoryAgent onError={setError} onNotify={notify} />,
   }
-  return <AppShell page={page} setPage={setPage} onAdd={openAdd} onImport={importCsv} profile={profile} onSaveProfile={saveProfile}>
+  if (!loading && authenticationRequired) return <SignIn onAuthenticated={loadWorkspace} />
+  return <AppShell page={page} setPage={setPage} onAdd={openAdd} onImport={importCsv} profile={profile} onSaveProfile={saveProfile} user={user} onLogout={signOut}>
     {loading ? <div className="loading"><span /><p>Finding your north star…</p></div> : pages[page] || pages.overview}
     {modalOpen ? <ApplicationModal item={editing} onClose={() => setModalOpen(false)} onSave={save} /> : null}
     {error ? <div className="error-banner"><span>{error}</span><button onClick={() => setError('')} aria-label="Dismiss error"><X /></button></div> : null}

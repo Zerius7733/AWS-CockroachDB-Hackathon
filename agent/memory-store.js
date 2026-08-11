@@ -6,7 +6,6 @@ import { getDatabasePool, withDatabaseTransaction } from '../lib/database.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const localPath = path.join(__dirname, '..', 'data', 'memory.json')
 const schemaPath = path.join(__dirname, '..', 'db', 'memory.sql')
-const userId = 'demo-user'
 let initialization
 
 const vectorLiteral = (embedding) => `[${embedding.join(',')}]`
@@ -27,8 +26,11 @@ const getPool = async () => {
 }
 
 const readLocal = async () => {
-  try { return JSON.parse(await fs.readFile(localPath, 'utf8')) }
-  catch (error) { if (error.code === 'ENOENT') return { profile: null, memories: [] }; throw error }
+  try {
+    const data = JSON.parse(await fs.readFile(localPath, 'utf8'))
+    if (data.users) return data
+    return { users: { 'demo-user': { profile: data.profile || null, memories: data.memories || [] } } }
+  } catch (error) { if (error.code === 'ENOENT') return { users: {} }; throw error }
 }
 
 const writeLocal = async (data) => {
@@ -40,9 +42,11 @@ const writeLocal = async (data) => {
 
 export const storageMode = () => process.env.DATABASE_URL ? 'cockroachdb' : 'local-demo'
 
-export const listMemories = async () => {
+const localUserData = (data, userId) => data.users[userId] || { profile: null, memories: [] }
+
+export const listMemories = async (userId) => {
   const database = await getPool()
-  if (!database) return (await readLocal()).memories.map(({ embedding: _embedding, ...item }) => item)
+  if (!database) return localUserData(await readLocal(), userId).memories.map(({ embedding: _embedding, ...item }) => item)
   const result = await database.query(
     `SELECT id, category, title, content, source_name AS "sourceName", confidence::FLOAT8, verified, created_at AS "createdAt"
      FROM candidate_memories WHERE user_id = $1 ORDER BY created_at DESC`, [userId],
@@ -50,14 +54,15 @@ export const listMemories = async () => {
   return result.rows
 }
 
-export const saveResumeMemories = async ({ profile, memories, embeddings, sourceName }) => {
+export const saveResumeMemories = async (userId, { profile, memories, embeddings, sourceName }) => {
   const now = new Date().toISOString()
   const records = memories.map((item, index) => ({
     ...item, id: crypto.randomUUID(), sourceName, verified: false, createdAt: now, embedding: embeddings[index],
   }))
   const database = await getPool()
   if (!database) {
-    await writeLocal({ profile, memories: records })
+    const current = await readLocal()
+    await writeLocal({ users: { ...current.users, [userId]: { profile, memories: records } } })
     return records.map(({ embedding: _embedding, ...item }) => item)
   }
 
@@ -80,9 +85,9 @@ export const saveResumeMemories = async ({ profile, memories, embeddings, source
   return records.map(({ embedding: _embedding, ...item }) => item)
 }
 
-export const searchMemories = async (embedding, limit = 12) => {
+export const searchMemories = async (userId, embedding, limit = 12) => {
   const database = await getPool()
-  if (!database) return (await readLocal()).memories.slice(0, limit)
+  if (!database) return localUserData(await readLocal(), userId).memories.slice(0, limit)
   const result = await database.query(
     `SELECT id, category, title, content, source_name AS "sourceName", confidence::FLOAT8, verified,
             1 - (embedding <=> $2::VECTOR) AS similarity
@@ -95,13 +100,14 @@ export const searchMemories = async (embedding, limit = 12) => {
   return result.rows
 }
 
-export const deleteMemory = async (id) => {
+export const deleteMemory = async (userId, id) => {
   const database = await getPool()
   if (!database) {
     const current = await readLocal()
-    const next = current.memories.filter((item) => item.id !== id)
-    if (next.length === current.memories.length) return false
-    await writeLocal({ ...current, memories: next })
+    const user = localUserData(current, userId)
+    const next = user.memories.filter((item) => item.id !== id)
+    if (next.length === user.memories.length) return false
+    await writeLocal({ users: { ...current.users, [userId]: { ...user, memories: next } } })
     return true
   }
   const result = await database.query('DELETE FROM candidate_memories WHERE id = $1 AND user_id = $2', [id, userId])

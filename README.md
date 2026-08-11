@@ -6,7 +6,7 @@ Northstar is a job application tracker with an evidence-backed career-memory age
 
 - **CockroachDB Distributed Vector Indexing:** persistent career memories and cosine-similarity retrieval.
 - **CockroachDB Cloud MCP Server:** read-only agent inspection of the live memory schema and retrieval queries.
-- **Amazon ECS:** containerized deployment of the web application and agent API.
+- **Amazon ECS or Lambda:** containerized or serverless deployment with per-user data isolation.
 - **OpenAI:** structured resume extraction, embeddings, and job-match reasoning.
 
 See [the architecture](docs/ARCHITECTURE.md) and [MCP setup](docs/MCP_SETUP.md).
@@ -22,6 +22,16 @@ npm run dev
 Add `DATABASE_URL` and `OPENAI_API_KEY` to `.env`. Use the General connection string from CockroachDB Cloud's **Connect** dialog and keep `sslmode=verify-full` enabled. The npm scripts load `.env` automatically for local development.
 
 Open `http://localhost:5173`. Application and profile data are persisted in CockroachDB. The server creates the required tables and indexes on startup. CSV import/export remains available for backups and portability.
+
+Create an account from the sign-in screen. Credentials and sessions are stored in CockroachDB: passwords are salted and hashed with memory-hard scrypt, while the browser receives only an opaque HTTP-only session cookie. Each application, profile, and career-memory query is constrained by the authenticated user ID. Existing pre-authentication data remains assigned to the `demo-user` database identity and is not exposed to newly registered accounts.
+
+After registering, move your existing local-demo applications and memories into that account once with:
+
+```bash
+npm run db:claim-demo -- you@example.com
+```
+
+`AUTH_SESSION_DAYS` is optional and defaults to 7 days. Production must run behind HTTPS so the session cookie receives its `Secure` attribute. Password reset and email verification are not yet implemented, so use test accounts until those recovery flows exist.
 
 Open **Career agent** to upload a PDF resume, inspect the durable facts extracted from it, and run a memory-backed job match. `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` are optional; their defaults are documented in `.env.example`.
 
@@ -46,6 +56,7 @@ Build the included Dockerfile, push it to Amazon ECR, and run it as an ECS servi
 ```text
 OPENAI_API_KEY
 DATABASE_URL
+AUTH_SESSION_DAYS (optional)
 OPENAI_MODEL (optional)
 OPENAI_EMBEDDING_MODEL (optional)
 ```

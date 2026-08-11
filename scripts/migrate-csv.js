@@ -6,6 +6,7 @@ import { parseCsv } from '../lib/csv.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dataDir = path.join(__dirname, '..', 'data')
+const migrationUserId = 'demo-user'
 
 const readCsvIfPresent = async (filename) => {
   try { return parseCsv(await fs.readFile(path.join(dataDir, filename), 'utf8')) }
@@ -18,7 +19,7 @@ try {
   const profiles = await readCsvIfPresent('profile.csv')
 
   if (applications.length) {
-    await replaceApplications(applications)
+    await replaceApplications(migrationUserId, applications)
     console.log(`Migrated ${applications.length} applications to CockroachDB.`)
   } else console.log('No data/applications.csv file found; applications were not changed.')
 
@@ -29,7 +30,7 @@ try {
       legacy.firstName = firstName
       legacy.lastName = lastName.join(' ')
     }
-    await saveProfile({
+    await saveProfile(migrationUserId, {
       firstName: legacy.firstName || '',
       lastName: legacy.lastName || '',
       email: legacy.email || '',
