@@ -7,7 +7,7 @@
     "node": ">=22.12.0 <23"
   },
   "scripts": {
-    "dev": "concurrently \"node --env-file-if-exists=.env server.js\" \"vite --host 0.0.0.0\"",
+    "dev": "concurrently \"node --watch --env-file-if-exists=.env server.js\" \"vite --host 0.0.0.0\"",
     "build": "vite build",
     "db:migrate-csv": "node --env-file-if-exists=.env scripts/migrate-csv.js",
     "test": "node --test",

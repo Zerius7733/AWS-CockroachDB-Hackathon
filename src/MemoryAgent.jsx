@@ -11,11 +11,14 @@ const readAsBase64 = (file) => new Promise((resolve, reject) => {
 
 const request = async (url, options) => {
   const response = await fetch(url, options)
+  if (response.status === 204) return null
+  const isJson = response.headers.get('content-type')?.includes('application/json')
+  const payload = isJson ? await response.json() : null
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}))
-    throw new Error(payload.error || 'The agent could not complete that request')
+    throw new Error(payload?.error || 'The agent could not complete that request')
   }
-  return response.status === 204 ? null : response.json()
+  if (!isJson) throw new Error('The Northstar API returned HTML instead of data. Restart npm run dev and refresh this page.')
+  return payload
 }
 
 const CATEGORY_LABELS = {
