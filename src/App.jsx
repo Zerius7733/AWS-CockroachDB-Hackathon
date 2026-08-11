@@ -1,17 +1,19 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { sankey, sankeyJustify, sankeyLinkHorizontal } from 'd3-sankey'
 import {
   ArrowDownToLine, ArrowRight, ArrowUpRight, BarChart3, BriefcaseBusiness,
   CalendarDays, Check, ChevronDown, CirclePlus, Download, FileUp, Gauge,
-  LayoutDashboard, Menu, MoreHorizontal, Pencil, Plus, Search, Sparkles,
+  LayoutDashboard, Menu, MoreHorizontal, Pencil, Plus, Search, Sparkles, Bot,
   Target, Trash2, TrendingUp, Upload, UserRound, X,
 } from 'lucide-react'
+import MemoryAgent from './MemoryAgent.jsx'
 
 const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'applications', label: 'Applications', icon: BriefcaseBusiness },
   { id: 'pipeline', label: 'Pipeline', icon: Target },
   { id: 'insights', label: 'Insights', icon: BarChart3 },
+  { id: 'agent', label: 'Career agent', icon: Bot },
 ]
 const STATUSES = ['Applied', 'Screening', 'Interview', 'Offer', 'Closed']
 const STATUS_CLASS = Object.fromEntries(STATUSES.map((status) => [status, status.toLowerCase()]))
@@ -398,7 +400,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
-  const notify = (message) => { setToast(message); window.setTimeout(() => setToast(''), 2400) }
+  const notify = useCallback((message) => { setToast(message); window.setTimeout(() => setToast(''), 2400) }, [])
 
   useEffect(() => {
     Promise.all([api.list(), api.getProfile()])
@@ -448,6 +450,7 @@ export default function App() {
     applications: <Applications applications={applications} onEdit={openEdit} onDelete={remove} />,
     pipeline: <Pipeline applications={applications} onEdit={openEdit} />,
     insights: <Insights applications={applications} />,
+    agent: <MemoryAgent onError={setError} onNotify={notify} />,
   }
   return <AppShell page={page} setPage={setPage} onAdd={openAdd} onImport={importCsv} profile={profile} onSaveProfile={saveProfile}>
     {loading ? <div className="loading"><span /><p>Finding your north star…</p></div> : pages[page] || pages.overview}

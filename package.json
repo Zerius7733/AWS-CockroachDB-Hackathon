@@ -7,18 +7,20 @@
     "node": ">=22.12.0 <23"
   },
   "scripts": {
-    "dev": "concurrently \"node server.js\" \"vite --host 0.0.0.0\"",
+    "dev": "concurrently \"node --env-file-if-exists=.env server.js\" \"vite --host 0.0.0.0\"",
     "build": "vite build",
     "test:extension": "node extension/test-extractor.mjs",
-    "start": "node server.js",
+    "start": "node --env-file-if-exists=.env server.js",
     "preview": "vite preview"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "codex": "^0.2.3",
     "concurrently": "latest",
     "d3-sankey": "^0.12.3",
     "express": "latest",
     "lucide-react": "latest",
+    "pg": "^8.23.0",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
