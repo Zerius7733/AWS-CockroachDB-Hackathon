@@ -69,6 +69,7 @@ test('job search requires an API key before making a request', async () => {
 test('job search uses live web search and returns only public job URLs', async () => {
   process.env.OPENAI_API_KEY = 'test-key'
   let body
+  let requestCount = 0
   const result = {
     searchSummary: 'Found current platform roles.',
     jobs: [
@@ -77,6 +78,7 @@ test('job search uses live web search and returns only public job URLs', async (
     ],
   }
   globalThis.fetch = async (_url, options) => {
+    requestCount += 1
     body = JSON.parse(options.body)
     return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: JSON.stringify(result) }] }] }), {
       status: 200,
@@ -98,6 +100,36 @@ test('job search uses live web search and returns only public job URLs', async (
   assert.equal(body.text.format.name, 'northstar_job_search')
   assert.match(body.input[1].content, /COCKROACHDB JOB FEEDBACK MEMORY/)
   assert.match(body.input[1].content, /\[wrong_industry\] Security Analyst at Example Security/)
+  assert.match(body.input[1].content, /first pass produced only 1 verified distinct jobs/i)
+  assert.equal(requestCount, 2)
   assert.equal(response.jobs.length, 1)
   assert.equal(response.jobs[0].url, 'https://example.com/jobs/123')
+})
+
+test('job search expands a short first pass to ten distinct verified jobs', async () => {
+  process.env.OPENAI_API_KEY = 'test-key'
+  let requestCount = 0
+  const job = (id, score = 80) => ({
+    title: `Engineer ${id}`, company: `Company ${id}`, location: 'Singapore', workMode: 'hybrid',
+    employmentType: 'Full-time', url: `https://example.com/jobs/${id}`, source: 'Example Careers',
+    postedAt: 'Today', score, matchLevel: 'strong', reason: 'Relevant experience.', matchedSkills: ['Python'],
+  })
+  globalThis.fetch = async () => {
+    requestCount += 1
+    const jobs = requestCount === 1
+      ? Array.from({ length: 7 }, (_, index) => job(index + 1, 80 + index))
+      : [job(7), job(8, 96), job(9, 95), job(10, 94)]
+    return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: JSON.stringify({ searchSummary: 'Search completed.', jobs }) }] }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const response = await searchJobs({ profile: null, memories: [], feedback: [], location: 'Singapore', workMode: 'hybrid' })
+
+  assert.equal(requestCount, 2)
+  assert.equal(response.jobs.length, 10)
+  assert.equal(new Set(response.jobs.map((item) => item.url)).size, 10)
+  assert.equal(response.jobs[0].score, 96)
+  assert.match(response.searchSummary, /expansion pass supplied enough/i)
 })
