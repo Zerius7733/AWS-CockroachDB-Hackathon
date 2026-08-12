@@ -31,6 +31,18 @@ Northstar never applies to a job automatically. The candidate reviews memories, 
 
 See [Architecture](docs/ARCHITECTURE.md) for the request and data flow and [CockroachDB MCP setup](docs/MCP_SETUP.md) for the read-only MCP demo.
 
+## Architecture diagrams
+
+The core recommendation loop retrieves evidence from durable career memory, ranks jobs, records explicit user feedback, updates preferences, and invalidates stale results:
+
+![Northstar career-memory feedback loop](assets/mermaid-diagram.png)
+
+The full workflow shows resume ingestion, 1,536-dimensional embedding storage in CockroachDB, vector retrieval, live job discovery, cache reuse, and the feedback paths that update candidate memory:
+
+![Complete Northstar agent and data flow](assets/mermaid-diagram%20full.png)
+
+See [Architecture](docs/ARCHITECTURE.md) for a text explanation of the components and trust boundaries.
+
 ## What is included
 
 | Path | Contents |
@@ -48,6 +60,7 @@ See [Architecture](docs/ARCHITECTURE.md) for the request and data flow and [Cock
 | `railway.json` | Alternative Railway build and start configuration. |
 | `.env.example` | Complete environment variable template with safe placeholders. |
 | `docs/` | Architecture and CockroachDB MCP documentation. |
+| `assets/` | Architecture and agent-feedback diagrams used in this README. |
 
 Generated dependencies and build output are intentionally excluded. `npm ci` restores the exact dependency tree from `package-lock.json`, and `npm run build` recreates `dist/`.
 
@@ -93,6 +106,12 @@ npm ci
 cp .env.example .env
 ```
 
+PowerShell equivalent:
+
+```powershell
+Copy-Item .env.example .env
+```
+
 Open `.env` and provide at least:
 
 ```dotenv
@@ -111,6 +130,15 @@ npm run dev
 Open [http://localhost:5173](http://localhost:5173). Vite serves the client on port `5173` and proxies `/api` to Express on port `3001`. On first startup, Northstar creates the required CockroachDB tables and indexes.
 
 Create a test account from the sign-in screen. Passwords must contain at least 12 characters.
+
+To run a production-style local build instead of the development servers:
+
+```bash
+npm run build
+npm start
+```
+
+Then open [http://localhost:3001](http://localhost:3001).
 
 ## Environment variables
 
