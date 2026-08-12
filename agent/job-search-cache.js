@@ -3,7 +3,7 @@ import { getDatabasePool } from '../lib/database.js'
 
 const localCache = new Map()
 const minute = 60_000
-const JOB_SEARCH_STRATEGY_VERSION = 3
+const JOB_SEARCH_STRATEGY_VERSION = 4
 
 export const jobSearchFreshnessMinutes = () => {
   const configured = Number(process.env.JOB_SEARCH_CACHE_MINUTES || 60)
@@ -11,11 +11,12 @@ export const jobSearchFreshnessMinutes = () => {
   return Math.min(1_440, Math.max(5, Math.round(configured)))
 }
 
-export const jobSearchCacheKey = ({ profile, memories, feedback = [], location, workMode }) => createHash('sha256')
+export const jobSearchCacheKey = ({ profile, memories, feedback = [], location, workMode, jobType }) => createHash('sha256')
   .update(JSON.stringify({
     strategyVersion: JOB_SEARCH_STRATEGY_VERSION,
     location: String(location || '').trim().toLowerCase(),
     workMode: String(workMode || 'any').trim().toLowerCase(),
+    jobType: String(jobType || 'any').trim().toLowerCase(),
     profile: profile ? {
       summary: profile.summary,
       targetRoles: profile.targetRoles,

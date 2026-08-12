@@ -92,6 +92,7 @@ test('job search uses live web search and returns only public job URLs', async (
     feedback: [{ feedbackType: 'wrong_industry', jobTitle: 'Security Analyst', company: 'Example Security', location: 'Singapore', workMode: 'on-site' }],
     location: 'Singapore',
     workMode: 'remote',
+    jobType: 'full-time',
   })
 
   assert.equal(body.tools[0].type, 'web_search')
@@ -100,6 +101,7 @@ test('job search uses live web search and returns only public job URLs', async (
   assert.equal(body.text.format.name, 'northstar_job_search')
   assert.match(body.input[1].content, /COCKROACHDB JOB FEEDBACK MEMORY/)
   assert.match(body.input[1].content, /\[wrong_industry\] Security Analyst at Example Security/)
+  assert.match(body.input[1].content, /Job type: full-time/)
   assert.match(body.input[1].content, /first pass produced only 1 verified distinct jobs/i)
   assert.equal(requestCount, 2)
   assert.equal(response.jobs.length, 1)
@@ -132,4 +134,24 @@ test('job search expands a short first pass to ten distinct verified jobs', asyn
   assert.equal(new Set(response.jobs.map((item) => item.url)).size, 10)
   assert.equal(response.jobs[0].score, 96)
   assert.match(response.searchSummary, /expansion pass supplied enough/i)
+})
+
+test('job search excludes employment types that do not match the selected job type', async () => {
+  process.env.OPENAI_API_KEY = 'test-key'
+  const job = (title, employmentType, id) => ({
+    title, company: 'Example', location: 'Singapore', workMode: 'hybrid', employmentType,
+    url: `https://example.com/jobs/${id}`, source: 'Example Careers', postedAt: 'Today',
+    score: 90, matchLevel: 'excellent', reason: 'Relevant experience.', matchedSkills: ['SQL'],
+  })
+  globalThis.fetch = async () => new Response(JSON.stringify({ output: [{ content: [{
+    type: 'output_text', text: JSON.stringify({ searchSummary: 'Search completed.', jobs: [
+      job('Software Engineer', 'Full-time', 'full-time'),
+      job('Engineering Intern', 'Internship', 'internship'),
+    ] }),
+  }] }] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+
+  const response = await searchJobs({ profile: null, memories: [], location: 'Singapore', workMode: 'any', jobType: 'internship' })
+
+  assert.ok(response.jobs.length > 0)
+  assert.ok(response.jobs.every((job) => job.employmentType === 'Internship'))
 })

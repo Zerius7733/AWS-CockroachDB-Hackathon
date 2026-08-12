@@ -166,8 +166,10 @@ app.post('/api/agent/jobs', async (req, res) => {
   try {
     const location = String(req.body?.location || '').trim().slice(0, 120)
     const workMode = String(req.body?.workMode || 'any').trim().toLowerCase()
+    const jobType = String(req.body?.jobType || 'any').trim().toLowerCase()
     if (!['any', 'remote', 'hybrid', 'on-site'].includes(workMode)) return res.status(400).json({ error: 'Choose a valid work mode' })
-    logInfo('job_search_started', { locationProvided: Boolean(location), workMode })
+    if (!['any', 'full-time', 'internship'].includes(jobType)) return res.status(400).json({ error: 'Choose a valid job type' })
+    logInfo('job_search_started', { locationProvided: Boolean(location), workMode, jobType })
     stage = 'load_context'
     const [{ profile, memories }, feedback] = await Promise.all([
       getCareerContext(req.user.id),
@@ -177,7 +179,7 @@ app.post('/api/agent/jobs', async (req, res) => {
     if (!memories.length) return res.status(409).json({ error: 'Upload a resume before searching for jobs' })
     stage = 'cache_lookup'
     const freshnessMinutes = jobSearchFreshnessMinutes()
-    const searchKey = jobSearchCacheKey({ profile, memories, feedback, location, workMode })
+    const searchKey = jobSearchCacheKey({ profile, memories, feedback, location, workMode, jobType })
     const cached = await getCachedJobSearch(req.user.id, searchKey, freshnessMinutes)
     if (cached) {
       logInfo('job_search_cache_hit', { jobCount: cached.result.jobs?.length || 0, durationMs: Date.now() - startedAt })
@@ -195,6 +197,7 @@ app.post('/api/agent/jobs', async (req, res) => {
       profile,
       location,
       workMode,
+      jobType,
     })
     logInfo('job_search_vector_memory_retrieved', {
       retrievedMemoryCount: relevantMemories.length,
@@ -203,7 +206,7 @@ app.post('/api/agent/jobs', async (req, res) => {
     })
     stage = 'openai_web_search'
     logInfo('job_search_cache_miss', { durationMs: Date.now() - startedAt })
-    const result = await searchJobs({ profile, memories: relevantMemories, feedback, location, workMode })
+    const result = await searchJobs({ profile, memories: relevantMemories, feedback, location, workMode, jobType })
     stage = 'save_cache'
     const saved = await saveJobSearchCache(req.user.id, searchKey, result)
     logInfo('job_search_completed', { jobCount: result.jobs.length, durationMs: Date.now() - startedAt })

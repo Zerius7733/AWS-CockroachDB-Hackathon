@@ -166,9 +166,10 @@ const isPublicHttpUrl = (value) => {
 const TARGET_JOB_COUNT = 10
 const INITIAL_CANDIDATE_COUNT = 14
 
-const candidateContext = ({ profile, memories, feedback, location, workMode }) => `SEARCH PREFERENCES
+const candidateContext = ({ profile, memories, feedback, location, workMode, jobType }) => `SEARCH PREFERENCES
 Location: ${location || 'Any location'}
 Work mode: ${workMode || 'any'}
+Job type: ${jobType || 'any'}
 
 CANDIDATE PROFILE
 Summary: ${profile?.summary || 'Not provided'}
@@ -183,7 +184,7 @@ ${feedback.length
     ? feedback.map((item) => `- [${item.feedbackType}] ${item.jobTitle} at ${item.company} — ${item.location || 'location unspecified'} (${item.workMode || 'work mode unspecified'})`).join('\n')
     : '- No job feedback recorded yet.'}`
 
-const discoverJobs = async ({ profile, memories, feedback, location, workMode, instruction }) => structuredResponse({
+const discoverJobs = async ({ profile, memories, feedback, location, workMode, jobType, instruction }) => structuredResponse({
   name: 'northstar_job_search',
   schema: jobSearchSchema,
   tools: [{ type: 'web_search' }],
@@ -199,38 +200,45 @@ const discoverJobs = async ({ profile, memories, feedback, location, workMode, i
       role: 'user',
       content: `${instruction}
 
-${candidateContext({ profile, memories, feedback, location, workMode })}
+${candidateContext({ profile, memories, feedback, location, workMode, jobType })}
 
 Search broadly across employer career sites and public job boards. Prefer recent listings. Never return a job marked not interested or applied, and never return jobs from a hidden company. Return fewer results rather than including a listing without a direct, verifiable URL. Rank the final list from best to weakest fit.`,
     },
   ],
 })
 
-const appendUniquePublicJobs = (target, candidates, seen) => {
+const matchesJobType = (employmentType, jobType) => {
+  if (!jobType || jobType === 'any') return true
+  const normalized = String(employmentType || '').trim().toLowerCase()
+  if (jobType === 'internship') return normalized.includes('intern')
+  return normalized.includes('full-time') || normalized.includes('full time') || normalized.includes('permanent')
+}
+
+const appendUniquePublicJobs = (target, candidates, seen, jobType) => {
   for (const job of candidates) {
-    if (!isPublicHttpUrl(job.url) || seen.has(job.url)) continue
+    if (!isPublicHttpUrl(job.url) || seen.has(job.url) || !matchesJobType(job.employmentType, jobType)) continue
     seen.add(job.url)
     target.push(job)
   }
 }
 
-export const searchJobs = async ({ profile, memories, feedback = [], location, workMode }) => {
+export const searchJobs = async ({ profile, memories, feedback = [], location, workMode, jobType = 'any' }) => {
   const first = await discoverJobs({
-    profile, memories, feedback, location, workMode,
-    instruction: `Find ${INITIAL_CANDIDATE_COUNT} suitable, currently open job candidates so that at least ${TARGET_JOB_COUNT} remain after URL validation. Return distinct direct job-detail URLs.`,
+    profile, memories, feedback, location, workMode, jobType,
+    instruction: `Find ${INITIAL_CANDIDATE_COUNT} suitable, currently open ${jobType === 'any' ? '' : `${jobType} `}job candidates so that at least ${TARGET_JOB_COUNT} remain after URL and job-type validation. Return distinct direct job-detail URLs.`,
   })
   const seen = new Set()
   const jobs = []
-  appendUniquePublicJobs(jobs, first.jobs, seen)
+  appendUniquePublicJobs(jobs, first.jobs, seen, jobType)
 
   let expansion
   if (jobs.length < TARGET_JOB_COUNT) {
     const missing = TARGET_JOB_COUNT - jobs.length
     expansion = await discoverJobs({
-      profile, memories, feedback, location, workMode,
-      instruction: `The first pass produced only ${jobs.length} verified distinct jobs. Find at least ${missing + 3} additional suitable jobs to reach a minimum of ${TARGET_JOB_COUNT}. Keep the stated location and work-mode preferences, broaden relevant role titles and public sources, and exclude these already-found URLs:\n${[...seen].map((url) => `- ${url}`).join('\n') || '- None'}`,
+      profile, memories, feedback, location, workMode, jobType,
+      instruction: `The first pass produced only ${jobs.length} verified distinct jobs. Find at least ${missing + 3} additional suitable jobs to reach a minimum of ${TARGET_JOB_COUNT}. Keep the stated location, work-mode, and job-type preferences, broaden relevant role titles and public sources, and exclude these already-found URLs:\n${[...seen].map((url) => `- ${url}`).join('\n') || '- None'}`,
     })
-    appendUniquePublicJobs(jobs, expansion.jobs, seen)
+    appendUniquePublicJobs(jobs, expansion.jobs, seen, jobType)
   }
 
   const rankedJobs = jobs.sort((left, right) => right.score - left.score).slice(0, TARGET_JOB_COUNT)

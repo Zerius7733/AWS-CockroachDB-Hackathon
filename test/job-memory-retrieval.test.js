@@ -12,7 +12,7 @@ test('job-memory retrieval embeds search intent and queries CockroachDB vector m
   const memories = [{ id: 'memory-1', title: 'Distributed systems' }]
 
   const result = await retrieveJobSearchMemories({
-    userId: 'user-1', profile, location: 'Singapore', workMode: 'hybrid',
+    userId: 'user-1', profile, location: 'Singapore', workMode: 'hybrid', jobType: 'internship',
   }, {
     createEmbedding: async (query) => {
       calls.push({ type: 'embed', query })
@@ -28,6 +28,7 @@ test('job-memory retrieval embeds search intent and queries CockroachDB vector m
   assert.match(calls[0].query, /Platform Engineer, SRE/)
   assert.match(calls[0].query, /Singapore/)
   assert.match(calls[0].query, /hybrid/)
+  assert.match(calls[0].query, /internship/)
   assert.deepEqual(calls[1], {
     type: 'search', userId: 'user-1', embedding: [0.1, 0.2, 0.3], limit: JOB_MEMORY_RETRIEVAL_LIMIT,
   })

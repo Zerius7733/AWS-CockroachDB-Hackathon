@@ -122,7 +122,7 @@
 .memory-row .icon-button { width: 31px; height: 31px; }
 
 .job-search-view { min-height: 0; }
-.job-search-form { min-height: 111px; padding: 19px 0; display: grid; grid-template-columns: minmax(230px, 1fr) minmax(180px, .75fr) minmax(210px, .72fr); gap: 18px; align-items: start; border-bottom: 1px solid var(--line); }
+.job-search-form { min-height: 111px; padding: 19px 0; display: grid; grid-template-columns: minmax(230px, 1.25fr) minmax(150px, .72fr) minmax(150px, .72fr) minmax(210px, .9fr); gap: 18px; align-items: start; border-bottom: 1px solid var(--line); }
 .job-search-form label > span { display: block; margin-bottom: 7px; color: #4c566e; font-size: 11px; font-weight: 800; }
 .job-search-form label > div { height: 45px; padding: 0 13px; display: flex; align-items: center; gap: 9px; border: 1px solid #dfe2e8; border-radius: 9px; background: white; }
 .job-search-form label > div:focus-within { border-color: #7895df; box-shadow: 0 0 0 3px #eaf0ff; }

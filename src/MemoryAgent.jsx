@@ -150,7 +150,7 @@ function JobRow({ job, feedbackType, feedbackSaving, onFeedback }) {
   </article>
 }
 
-function JobSearchView({ memories, location, setLocation, workMode, setWorkMode, searching, result, cacheMinutes, feedbackByJob, savingFeedback, feedbackNotice, onFeedback, onSearch, onUpload }) {
+function JobSearchView({ memories, location, setLocation, workMode, setWorkMode, jobType, setJobType, searching, result, cacheMinutes, feedbackByJob, savingFeedback, feedbackNotice, onFeedback, onSearch, onUpload }) {
   if (!memories.length) return <div className="career-empty">
     <Search /><h2>Add memory before searching</h2><p>The agent needs résumé evidence before it can find and explain suitable jobs.</p>
     <button className="button primary" onClick={onUpload}><UploadCloud />Upload résumé</button>
@@ -160,6 +160,7 @@ function JobSearchView({ memories, location, setLocation, workMode, setWorkMode,
     <form className="job-search-form" onSubmit={onSearch}>
       <label><span>Location</span><div><MapPin /><input value={location} onChange={(event) => setLocation(event.target.value)} maxLength="120" placeholder="e.g., Singapore or Remote" /></div></label>
       <label><span>Work mode</span><select value={workMode} onChange={(event) => setWorkMode(event.target.value)}><option value="any">Any</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="on-site">On-site</option></select></label>
+      <label><span>Job type</span><select value={jobType} onChange={(event) => setJobType(event.target.value)}><option value="any">Any</option><option value="full-time">Full-time</option><option value="internship">Internship</option></select></label>
       <div className="search-submit"><button className="button primary" disabled={searching}>{searching ? <><LoaderCircle className="spin" />Searching the web…</> : <><Search />Find matching jobs</>}</button><small>Same search is reused for {cacheMinutes || 60} min</small></div>
     </form>
     <div className="job-results" aria-live="polite">
@@ -187,6 +188,7 @@ export default function MemoryAgent({ onError, onNotify }) {
   const [searching, setSearching] = useState(false)
   const [location, setLocation] = useState('')
   const [workMode, setWorkMode] = useState('any')
+  const [jobType, setJobType] = useState('any')
   const [result, setResult] = useState(null)
   const [feedbackByJob, setFeedbackByJob] = useState({})
   const [savingFeedback, setSavingFeedback] = useState('')
@@ -244,7 +246,7 @@ export default function MemoryAgent({ onError, onNotify }) {
     setResult(null)
     try {
       setResult(await request('/api/agent/jobs', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, workMode }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, workMode, jobType }),
       }))
     } catch (error) { onError(error.message) }
     finally { setSearching(false) }
@@ -286,7 +288,7 @@ export default function MemoryAgent({ onError, onNotify }) {
       <div className="career-view" role="tabpanel">
         {activeTab === 'overview' ? <OverviewView memories={memories} status={status} uploading={uploading} searching={searching} result={result} location={location} workMode={workMode} onUpload={() => fileRef.current?.click()} onMemory={() => setActiveTab('memory')} onFindJobs={runSearch} onSearch={() => setActiveTab('search')} /> : null}
         {activeTab === 'memory' ? <MemoryView grouped={grouped} memories={memories} onRemove={removeMemory} onUpload={() => fileRef.current?.click()} /> : null}
-        {activeTab === 'search' ? <JobSearchView memories={memories} location={location} setLocation={setLocation} workMode={workMode} setWorkMode={setWorkMode} searching={searching} result={result} cacheMinutes={status.jobSearchCacheMinutes} feedbackByJob={feedbackByJob} savingFeedback={savingFeedback} feedbackNotice={feedbackNotice} onFeedback={saveFeedback} onSearch={runSearch} onUpload={() => fileRef.current?.click()} /> : null}
+        {activeTab === 'search' ? <JobSearchView memories={memories} location={location} setLocation={setLocation} workMode={workMode} setWorkMode={setWorkMode} jobType={jobType} setJobType={setJobType} searching={searching} result={result} cacheMinutes={status.jobSearchCacheMinutes} feedbackByJob={feedbackByJob} savingFeedback={savingFeedback} feedbackNotice={feedbackNotice} onFeedback={saveFeedback} onSearch={runSearch} onUpload={() => fileRef.current?.click()} /> : null}
       </div>
     </section>
   </section>
