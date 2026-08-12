@@ -3,7 +3,7 @@ import { getDatabasePool } from '../lib/database.js'
 
 const localCache = new Map()
 const minute = 60_000
-const JOB_SEARCH_STRATEGY_VERSION = 2
+const JOB_SEARCH_STRATEGY_VERSION = 3
 
 export const jobSearchFreshnessMinutes = () => {
   const configured = Number(process.env.JOB_SEARCH_CACHE_MINUTES || 60)

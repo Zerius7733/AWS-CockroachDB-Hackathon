@@ -14,6 +14,7 @@ import {
 } from './lib/database.js'
 import { createEmbedding, extractResume, searchJobs } from './agent/openai.js'
 import { deleteMemory, getCareerContext, listMemories, saveResumeMemories, storageMode } from './agent/memory-store.js'
+import { retrieveJobSearchMemories } from './agent/job-memory-retrieval.js'
 import { getCachedJobSearch, jobSearchCacheKey, jobSearchFreshnessMinutes, saveJobSearchCache } from './agent/job-search-cache.js'
 import { deleteJobFeedback, listJobFeedback, saveJobFeedback } from './agent/job-feedback-store.js'
 import { authenticationMode, login, logout, register, requireAuth } from './lib/auth.js'
@@ -188,9 +189,21 @@ app.post('/api/agent/jobs', async (req, res) => {
         cache: { hit: true, freshnessMinutes, freshUntil: cached.freshUntil },
       })
     }
+    stage = 'vector_memory_retrieval'
+    const relevantMemories = await retrieveJobSearchMemories({
+      userId: req.user.id,
+      profile,
+      location,
+      workMode,
+    })
+    logInfo('job_search_vector_memory_retrieved', {
+      retrievedMemoryCount: relevantMemories.length,
+      availableMemoryCount: memories.length,
+      durationMs: Date.now() - startedAt,
+    })
     stage = 'openai_web_search'
     logInfo('job_search_cache_miss', { durationMs: Date.now() - startedAt })
-    const result = await searchJobs({ profile, memories, feedback, location, workMode })
+    const result = await searchJobs({ profile, memories: relevantMemories, feedback, location, workMode })
     stage = 'save_cache'
     const saved = await saveJobSearchCache(req.user.id, searchKey, result)
     logInfo('job_search_completed', { jobCount: result.jobs.length, durationMs: Date.now() - startedAt })

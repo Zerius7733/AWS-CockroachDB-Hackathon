@@ -180,7 +180,7 @@ function JobSearchView({ memories, location, setLocation, workMode, setWorkMode,
 
 export default function MemoryAgent({ onError, onNotify }) {
   const fileRef = useRef(null)
-  const [activeTab, setActiveTab] = useState('search')
+  const [activeTab, setActiveTab] = useState('overview')
   const [status, setStatus] = useState({ openaiConfigured: false, cockroachConfigured: false, storage: 'local-demo', jobSearchCacheMinutes: 60 })
   const [memories, setMemories] = useState([])
   const [uploading, setUploading] = useState(false)

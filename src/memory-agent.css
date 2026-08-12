@@ -32,28 +32,21 @@
 .career-summary .button { min-height: 58px; }
 
 .career-workspace {
-  height: calc(100vh - 222px);
-  min-height: 510px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: white;
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: 56px minmax(0, 1fr);
+  min-height: 0;
 }
 
 .career-tabs {
+  min-height: 56px;
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid var(--line);
-  padding-left: 10px;
 }
 
 .career-tabs button {
   position: relative;
   min-width: 132px;
   border: 0;
-  background: white;
+  background: transparent;
   color: #667086;
   font-size: 14px;
   font-weight: 700;
@@ -63,13 +56,12 @@
 .career-tabs button:hover { color: var(--ink); background: #fbfbfc; }
 .career-tabs button.active { color: var(--coral); }
 .career-tabs button.active::after { content: ''; position: absolute; inset: auto 18px -1px; height: 2px; background: var(--coral); }
-.career-view { min-height: 0; overflow: hidden; }
+.career-view { min-height: 0; }
 
 .career-overview {
-  height: 100%;
-  padding: clamp(24px, 3vw, 42px);
+  padding: clamp(28px, 3vw, 42px) 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
   gap: 24px;
 }
 
@@ -117,10 +109,10 @@
 .overview-trust { color: #536078; font-size: 12px; font-weight: 500; }
 .overview-trust svg,.search-disclaimer svg { width: 15px; color: #0a9b70; }
 
-.memory-view { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
-.view-heading,.results-heading { min-height: 76px; padding: 17px 24px; display: flex; align-items: center; justify-content: space-between; gap: 22px; border-bottom: 1px solid var(--line); }
+.memory-view { min-height: 0; }
+.view-heading,.results-heading { min-height: 76px; padding: 17px 0; display: flex; align-items: center; justify-content: space-between; gap: 22px; border-bottom: 1px solid var(--line); }
 .view-heading > strong { padding: 7px 10px; border-radius: 7px; background: #eef2ff; color: var(--agent-blue); font: 800 11px 'Manrope'; }
-.memory-scroll { min-height: 0; overflow-y: auto; padding: 0 24px 24px; }
+.memory-scroll { padding-bottom: 24px; }
 .memory-section > header { position: sticky; top: 0; z-index: 2; min-height: 42px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.96); color: #697188; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; font-weight: 800; }
 .memory-section > header small { width: 19px; height: 19px; display: grid; place-items: center; border-radius: 5px; background: #f0f2f6; font-size: 9px; }
 .memory-row { min-height: 86px; padding: 15px 10px; display: grid; grid-template-columns: 1fr 34px; gap: 16px; border-top: 1px solid #edf0f4; }
@@ -129,8 +121,8 @@
 .memory-row footer { display: flex; gap: 14px; color: #8a91a1; font-size: 10px; }
 .memory-row .icon-button { width: 31px; height: 31px; }
 
-.job-search-view { height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
-.job-search-form { min-height: 111px; padding: 19px 24px; display: grid; grid-template-columns: minmax(230px, 1fr) minmax(180px, .75fr) minmax(210px, .72fr); gap: 18px; align-items: start; border-bottom: 1px solid var(--line); background: #fcfcfd; }
+.job-search-view { min-height: 0; }
+.job-search-form { min-height: 111px; padding: 19px 0; display: grid; grid-template-columns: minmax(230px, 1fr) minmax(180px, .75fr) minmax(210px, .72fr); gap: 18px; align-items: start; border-bottom: 1px solid var(--line); }
 .job-search-form label > span { display: block; margin-bottom: 7px; color: #4c566e; font-size: 11px; font-weight: 800; }
 .job-search-form label > div { height: 45px; padding: 0 13px; display: flex; align-items: center; gap: 9px; border: 1px solid #dfe2e8; border-radius: 9px; background: white; }
 .job-search-form label > div:focus-within { border-color: #7895df; box-shadow: 0 0 0 3px #eaf0ff; }
@@ -144,7 +136,7 @@
 .button:disabled { cursor: not-allowed; opacity: .55; }
 .spin { animation: spin .8s linear infinite; }
 
-.job-results { min-height: 0; overflow-y: auto; }
+.job-results { min-height: 0; }
 .results-heading { min-height: 70px; }
 .results-heading p { max-width: 760px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .result-timing { flex: 0 0 auto; display: grid; justify-items: end; gap: 5px; }
@@ -175,9 +167,9 @@
 .job-actions select:hover,.job-actions select:focus { border-color: #7895df; }
 .job-actions select.has-feedback { border-color: #8bcdb8; color: #087855; background: #f0faf6; }
 .job-actions select:disabled { cursor: wait; opacity: .65; }
-.search-disclaimer { min-height: 38px; padding: 0 24px; border-top: 1px solid var(--line); background: #fcfcfd; }
+.search-disclaimer { min-height: 38px; padding: 0; border-top: 1px solid var(--line); }
 
-.search-empty,.career-empty { height: 100%; display: grid; place-items: center; align-content: center; text-align: center; padding: 30px; color: #8a91a1; }
+.search-empty,.career-empty { min-height: 420px; display: grid; place-items: center; align-content: center; text-align: center; padding: 30px; color: #8a91a1; }
 .search-empty { grid-template-columns: 46px auto; text-align: left; gap: 15px; }
 .search-empty > svg,.career-empty > svg { width: 26px; height: 26px; }
 .search-empty h2,.career-empty h2 { color: var(--ink); }
@@ -193,7 +185,7 @@
 @media (max-width: 1100px) {
   .career-header { align-items: flex-start; flex-direction: column; }
   .career-summary { width: 100%; }.career-summary .button { flex: 0 0 auto; }
-  .career-workspace { height: auto; min-height: 630px; }
+  .career-workspace { min-height: 0; }
   .job-list-head { display: none; }
   .job-row { grid-template-columns: 78px 1fr 1fr auto; min-height: 132px; }
   .job-reason { grid-column: 2 / 4; }.job-source { display: none; }.job-actions { grid-column: 4; grid-row: 1 / 3; }
@@ -205,16 +197,14 @@
   .career-header h1 { font-size: 29px; }
   .career-header > div:first-child p { font-size: 13px; }
   .career-summary .button { width: 100%; min-height: 45px; }
-  .career-workspace { min-height: 650px; grid-template-rows: 51px auto; overflow: visible; }
+  .career-workspace { min-height: 0; }
   .career-tabs { padding-left: 0; }.career-tabs button { min-width: 0; flex: 1; font-size: 12px; }
-  .career-view { overflow: visible; }
-  .career-overview { min-height: 590px; padding: 20px; }
+  .career-overview { min-height: 0; padding: 20px 0; }
   .overview-intro { grid-template-columns: 46px 1fr; gap: 14px; }.overview-icon { width: 46px; height: 46px; }.overview-intro .button { grid-column: 1 / -1; width: 100%; }
   .overview-dashboard { grid-template-columns: 1fr; gap: 24px; }.overview-sidebar { border-left: 0; border-top: 1px solid var(--line); padding: 22px 0 0; }.overview-evidence-list article { grid-template-columns: 82px minmax(0, 1fr); gap: 12px; }
-  .memory-view { min-height: 600px; }.view-heading { padding-inline: 16px; }.memory-scroll { padding-inline: 16px; max-height: 520px; }
-  .job-search-view { min-height: 650px; }
-  .job-search-form { grid-template-columns: 1fr; gap: 12px; padding: 16px; }.search-submit { padding-top: 0; padding-bottom: 18px; }.search-submit .button { width: 100%; }.search-submit small { top: 51px; }
-  .job-results { max-height: 430px; }
+  .memory-view { min-height: 0; }.view-heading { padding-inline: 0; }.memory-scroll { padding-inline: 0; }
+  .job-search-view { min-height: 0; }
+  .job-search-form { grid-template-columns: 1fr; gap: 12px; padding: 16px 0; }.search-submit { padding-top: 0; padding-bottom: 18px; }.search-submit .button { width: 100%; }.search-submit small { top: 51px; }
   .results-heading { align-items: flex-start; flex-direction: column; padding: 15px 16px; }.results-heading p { white-space: normal; }.result-timing { justify-items: start; }.result-timing time { display: none; }
   .job-row { grid-template-columns: 70px 1fr; gap: 11px; padding: 16px; }
   .job-details { grid-column: 2; }.job-reason { grid-column: 1 / -1; }.job-actions { grid-column: 1 / -1; grid-row: auto; width: 100%; grid-template-columns: 1fr 1fr; }.job-source { display: block; grid-column: 1; grid-row: 2; }
