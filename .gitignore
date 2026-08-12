@@ -16,3 +16,6 @@ data/*.json
 /design-concept.png
 /northstar-desktop.png
 /northstar-mobile.png
+
+# Local deployment command notes.
+/commands.md
